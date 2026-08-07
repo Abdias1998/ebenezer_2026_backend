@@ -38,6 +38,11 @@ export const PERMISSIONS = {
     CREATE: 'attendance:create',
     READ: 'attendance:read',
   },
+  SUGGESTIONS: {
+    READ: 'suggestions:read',
+    UPDATE: 'suggestions:update',
+    DELETE: 'suggestions:delete',
+  },
 } as const;
 
 export type Permission =

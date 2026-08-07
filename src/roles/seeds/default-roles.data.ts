@@ -27,6 +27,7 @@ export const DEFAULT_ROLES: DefaultRoleDefinition[] = [
       ...Object.values(PERMISSIONS.PARTICIPANTS),
       ...Object.values(PERMISSIONS.REGISTRATIONS),
       ...Object.values(PERMISSIONS.ATTENDANCE),
+      ...Object.values(PERMISSIONS.SUGGESTIONS),
       PERMISSIONS.USERS.READ,
       PERMISSIONS.ROLES.READ,
     ],
