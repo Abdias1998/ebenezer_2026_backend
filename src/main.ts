@@ -1,5 +1,3 @@
-import { mkdirSync } from 'fs';
-import { join } from 'path';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
@@ -8,11 +6,8 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
-import { PHOTO_UPLOAD_DIR } from './common/config/photo-upload.config';
 
 async function bootstrap(): Promise<void> {
-  mkdirSync(PHOTO_UPLOAD_DIR, { recursive: true });
-
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
 
@@ -20,8 +15,6 @@ async function bootstrap(): Promise<void> {
     origin: configService.get<string[]>('corsOrigin'),
     credentials: true,
   });
-
-  app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads' });
 
   app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(

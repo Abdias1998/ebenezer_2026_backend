@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -8,15 +7,11 @@ import {
   Patch,
   Post,
   Query,
-  UploadedFile,
   UseGuards,
-  UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { PERMISSIONS } from 'src/common/constants/permissions.constant';
-import { photoUploadOptions } from 'src/common/config/photo-upload.config';
 import { Permissions } from 'src/common/decorators/permissions.decorator';
 import { Public } from 'src/common/decorators/public.decorator';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
@@ -35,17 +30,8 @@ export class RegistrationsController {
 
   @Public()
   @Post('public')
-  @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('photo', photoUploadOptions))
-  createPublic(
-    @Body() dto: PublicRegisterDto,
-    @UploadedFile() photo?: Express.Multer.File,
-  ) {
-    if (!photo) {
-      throw new BadRequestException('La photo est obligatoire');
-    }
-    const photoPath = `/uploads/participants/${photo.filename}`;
-    return this.registrationsService.createPublic(dto, photoPath);
+  createPublic(@Body() dto: PublicRegisterDto) {
+    return this.registrationsService.createPublic(dto);
   }
 
   @Post()

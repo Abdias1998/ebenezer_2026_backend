@@ -1,6 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsDateString,
   IsEmail,
   IsIn,
   IsMongoId,
@@ -21,11 +20,6 @@ export class PublicRegisterDto {
   @IsOptional()
   @IsIn(['male', 'female'])
   gender?: 'male' | 'female';
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsDateString()
-  birthDate?: string;
 
   @ApiProperty()
   @IsString()

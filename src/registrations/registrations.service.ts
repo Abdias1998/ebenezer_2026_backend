@@ -85,7 +85,6 @@ export class RegistrationsService {
 
   async createPublic(
     dto: PublicRegisterDto,
-    photoPath: string,
   ): Promise<PublicRegistrationResponse> {
     const event = await this.eventsService.findById(dto.eventId);
 
@@ -99,15 +98,9 @@ export class RegistrationsService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         gender: dto.gender ? GENDER_MAP[dto.gender] : undefined,
-        dob: dto.birthDate,
         phone: dto.phone,
         whatsapp: dto.whatsapp,
         email: dto.email,
-        photo: photoPath,
-      });
-    } else {
-      participant = await this.participantsService.update(participant.id, {
-        photo: photoPath,
       });
     }
 
