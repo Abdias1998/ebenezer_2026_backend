@@ -11,6 +11,7 @@ const READ_ONLY = [
   PERMISSIONS.PARTICIPANTS.READ,
   PERMISSIONS.REGISTRATIONS.READ,
   PERMISSIONS.ATTENDANCE.READ,
+  PERMISSIONS.RECRUITMENTS.READ,
 ];
 
 export const DEFAULT_ROLES: DefaultRoleDefinition[] = [
@@ -28,6 +29,7 @@ export const DEFAULT_ROLES: DefaultRoleDefinition[] = [
       ...Object.values(PERMISSIONS.REGISTRATIONS),
       ...Object.values(PERMISSIONS.ATTENDANCE),
       ...Object.values(PERMISSIONS.SUGGESTIONS),
+      ...Object.values(PERMISSIONS.RECRUITMENTS),
       PERMISSIONS.USERS.READ,
       PERMISSIONS.ROLES.READ,
     ],

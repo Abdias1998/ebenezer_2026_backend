@@ -43,6 +43,12 @@ export const PERMISSIONS = {
     UPDATE: 'suggestions:update',
     DELETE: 'suggestions:delete',
   },
+  RECRUITMENTS: {
+    CREATE: 'recruitments:create',
+    READ: 'recruitments:read',
+    UPDATE: 'recruitments:update',
+    DELETE: 'recruitments:delete',
+  },
 } as const;
 
 export type Permission =

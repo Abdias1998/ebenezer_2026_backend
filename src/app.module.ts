@@ -13,6 +13,7 @@ import { QrcodeModule } from './qrcode/qrcode.module';
 import { RegistrationsModule } from './registrations/registrations.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { SuggestionsModule } from './suggestions/suggestions.module';
+import { RecruitmentsModule } from './recruitments/recruitments.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { SuggestionsModule } from './suggestions/suggestions.module';
     RegistrationsModule,
     AttendanceModule,
     SuggestionsModule,
+    RecruitmentsModule,
   ],
 })
 export class AppModule {}

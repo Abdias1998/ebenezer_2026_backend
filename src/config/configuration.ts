@@ -1,7 +1,7 @@
 export default () => ({
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: parseInt(process.env.PORT ?? '4001', 10),
-  corsOrigin: (process.env.CORS_ORIGIN ?? 'http://localhost:4000,http://localhost:4001')
+  corsOrigin: (process.env.CORS_ORIGIN ?? 'http://localhost:4000,http://localhost:4001,http://localhost:4002')
     .split(',')
     .map((origin) => origin.trim()),
   mongodbUri: process.env.MONGODB_URI,
