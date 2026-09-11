@@ -4,7 +4,8 @@ import { IsIn, IsInt, IsString, Matches, Max, Min } from 'class-validator';
 export const PAYIN_NETWORKS = ['mtn', 'moov', 'celtiis_bj'] as const;
 export type PayinNetwork = (typeof PAYIN_NETWORKS)[number];
 
-const BENIN_PHONE_REGEX = /^(?:(?:\+|00)?229)?01\d{8}$/;
+const BENIN_PHONE_REGEX =
+  /^\s*\+?\s*(?:00\s*)?(?:229\s*)?(?:01\s*)?[1-9]\s*(?:\d\s*){7}\s*$/;
 
 export class InitiatePaymentDto {
   @ApiProperty({
@@ -22,12 +23,13 @@ export class InitiatePaymentDto {
 
   @ApiProperty({
     description:
-      'Numéro Mobile Money du payeur (format national 01XXXXXXXX ou international +229XXXXXXXX)',
-    example: '0190000000',
+      "Numéro Mobile Money du payeur. Le préfixe 01 et le code pays 229 sont ajoutés automatiquement si absents. Formats acceptés : 67919150, 0167919150, +2290167919150",
+    example: '0167919150',
   })
   @IsString()
   @Matches(BENIN_PHONE_REGEX, {
-    message: 'Numéro Mobile Money invalide (format Bénin attendu : 01XXXXXXXX ou +229XXXXXXXX)',
+    message:
+      "Numéro Mobile Money invalide (ex : 67919150, 0167919150 ou +2290167919150)",
   })
   phoneNumber: string;
 }

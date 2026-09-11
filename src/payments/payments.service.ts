@@ -101,18 +101,21 @@ export class PaymentsService {
 
   /**
    * Normalise un numéro béninois vers le format international attendu par
-   * FeexPay : "229" + "01" + 8 chiffres. Si le numéro ne comporte pas le
-   * préfixe "229" (code pays Bénin), on l'ajoute avant d'envoyer.
+   * FeexPay : "229" + "01" + 8 chiffres. Le préfixe national "01" et le
+   * code pays "229" sont ajoutés automatiquement s'ils sont absents.
    */
   private toInternational(phoneNumber: string): string {
     let digits = phoneNumber.replace(/\D/g, '');
     if (digits.startsWith('00')) {
       digits = digits.slice(2);
     }
-    if (!digits.startsWith('229')) {
-      digits = `229${digits}`;
+    if (digits.startsWith('229')) {
+      digits = digits.slice(3);
     }
-    return digits;
+    if (!digits.startsWith('01')) {
+      digits = `01${digits}`;
+    }
+    return `229${digits}`;
   }
 
   async initiate(
