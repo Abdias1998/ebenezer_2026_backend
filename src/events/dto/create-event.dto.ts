@@ -40,6 +40,11 @@ export class CreateEventDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  registrationPrefix?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   logo?: string;
 
   @ApiPropertyOptional()

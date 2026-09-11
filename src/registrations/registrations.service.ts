@@ -12,7 +12,7 @@ import { CountersRepository } from './repositories/counters.repository';
 import { RegistrationsRepository } from './repositories/registrations.repository';
 import { RegistrationDocument } from './schemas/registration.schema';
 
-const REGISTRATION_NUMBER_PREFIX = 'EBEN';
+const DEFAULT_REGISTRATION_PREFIX = 'EBEN';
 
 const GENDER_MAP: Record<'male' | 'female', ParticipantGender> = {
   male: ParticipantGender.MALE,
@@ -59,7 +59,7 @@ export class RegistrationsService {
 
   async create(dto: CreateRegistrationDto): Promise<RegistrationDocument> {
     await this.participantsService.findById(dto.participantId);
-    await this.eventsService.findById(dto.eventId);
+    const event = await this.eventsService.findById(dto.eventId);
 
     const existing = await this.registrationsRepository.findByParticipantAndEvent(
       dto.participantId,
@@ -75,7 +75,7 @@ export class RegistrationsService {
     const sequence = await this.countersRepository.getNextSequence(
       `registration:${year}`,
     );
-    const registrationNumber = `${REGISTRATION_NUMBER_PREFIX}-${year}-${String(
+    const registrationNumber = `${event.registrationPrefix ?? DEFAULT_REGISTRATION_PREFIX}-${year}-${String(
       sequence,
     ).padStart(6, '0')}`;
     const code = this.qrcodeService.generateOpaqueCode();
@@ -132,7 +132,7 @@ export class RegistrationsService {
     const sequence = await this.countersRepository.getNextSequence(
       `registration:${year}`,
     );
-    const registrationNumber = `${REGISTRATION_NUMBER_PREFIX}-${year}-${String(
+    const registrationNumber = `${event.registrationPrefix ?? DEFAULT_REGISTRATION_PREFIX}-${year}-${String(
       sequence,
     ).padStart(6, '0')}`;
     const code = this.qrcodeService.generateOpaqueCode();

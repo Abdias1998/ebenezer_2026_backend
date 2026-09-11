@@ -37,6 +37,9 @@ export class Event {
   @Prop()
   image?: string;
 
+  @Prop({ trim: true })
+  registrationPrefix?: string;
+
   @Prop({ default: 0 })
   totalSlots: number;
 

@@ -14,6 +14,7 @@ export const JDJ_EVENT = {
   location: 'CETEF Togo 2000, Palais des Expositions et des Foires, Lomé, Togo',
   totalSlots: 1000,
   status: EventStatus.PUBLISHED,
+  registrationPrefix: 'JDJ',
 };
 
 async function bootstrap(): Promise<void> {
