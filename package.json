@@ -12,7 +12,8 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src}/**/*.ts\" --fix",
-    "seed:roles": "ts-node -r tsconfig-paths/register src/roles/seeds/roles.seed.ts"
+    "seed:roles": "ts-node -r tsconfig-paths/register src/roles/seeds/roles.seed.ts",
+    "seed:events": "ts-node -r tsconfig-paths/register src/events/seeds/events.seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",

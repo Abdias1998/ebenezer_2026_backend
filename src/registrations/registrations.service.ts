@@ -28,6 +28,11 @@ export interface PublicRegistrationResponse {
     lastName: string;
     email?: string;
     phone: string;
+    city?: string;
+    country?: string;
+    church?: string;
+    tshirtSize?: string;
+    pickupLocation?: string;
     photo?: string;
   };
   event: {
@@ -93,15 +98,24 @@ export class RegistrationsService {
       dto.phone,
     );
 
+    const participantData = {
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      gender: dto.gender ? GENDER_MAP[dto.gender] : undefined,
+      phone: dto.phone,
+      whatsapp: dto.whatsapp,
+      email: dto.email,
+      city: dto.city,
+      country: dto.country,
+      church: dto.church,
+      tshirtSize: dto.tshirtSize,
+      pickupLocation: dto.pickupLocation,
+    };
+
     if (!participant) {
-      participant = await this.participantsService.create({
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        gender: dto.gender ? GENDER_MAP[dto.gender] : undefined,
-        phone: dto.phone,
-        whatsapp: dto.whatsapp,
-        email: dto.email,
-      });
+      participant = await this.participantsService.create(participantData);
+    } else {
+      await this.participantsService.update(participant.id, participantData);
     }
 
     const existing = await this.registrationsRepository.findByParticipantAndEvent(
@@ -145,6 +159,11 @@ export class RegistrationsService {
         lastName: participant.lastName,
         email: participant.email,
         phone: participant.phone,
+        city: participant.city,
+        country: participant.country,
+        church: participant.church,
+        tshirtSize: participant.tshirtSize,
+        pickupLocation: participant.pickupLocation,
         photo: participant.photo,
       },
       event: {

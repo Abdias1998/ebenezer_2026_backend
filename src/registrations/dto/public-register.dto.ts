@@ -38,6 +38,31 @@ export class PublicRegisterDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  city?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  country?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  church?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  tshirtSize?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  pickupLocation?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   acceptTerms?: string;
 
   @ApiProperty({ description: 'Event id' })

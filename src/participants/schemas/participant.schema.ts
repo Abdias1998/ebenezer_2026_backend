@@ -52,6 +52,21 @@ export class Participant {
   @Prop({ trim: true, lowercase: true })
   email?: string;
 
+  @Prop({ trim: true })
+  city?: string;
+
+  @Prop({ trim: true })
+  country?: string;
+
+  @Prop({ trim: true })
+  church?: string;
+
+  @Prop({ trim: true })
+  tshirtSize?: string;
+
+  @Prop({ trim: true })
+  pickupLocation?: string;
+
   @Prop()
   photo?: string;
 
