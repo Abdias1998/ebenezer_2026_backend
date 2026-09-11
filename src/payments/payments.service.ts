@@ -12,6 +12,28 @@ export interface FeexPayStatusResponse {
   status: FeexPayStatus;
   amount?: number;
   phoneNumber?: string;
+  reason?: string;
+}
+
+const REASON_LABELS: Record<string, string> = {
+  LOW_BALANCE_OR_PAYEE_LIMIT_REACHED_OR_NOT_ALLOWED:
+    'Solde insuffisant ou limite de paiement de votre compte atteinte.',
+  EXCEEDED_LIMIT: 'Vous avez dépassé la limite de paiement autorisée.',
+  TRANSACTION_FAILED: 'La transaction a échoué chez l\u2019opérateur.',
+  INSUFFICIENT_FUNDS: 'Solde insuffisant pour effectuer ce paiement.',
+  OPERATION_TIMED_OUT:
+    'L\u2019opération a expiré. Vous n\u2019avez pas confirmé le paiement à temps.',
+  PAYEE_NOT_REACHABLE: 'Le numéro indiqué n\u2019est pas joignable.',
+  INVALID_PHONE_NUMBER: 'Le numéro Mobile Money est invalide pour ce réseau.',
+};
+
+export function readablePaymentReason(reason?: string): string {
+  if (!reason) return '';
+  return REASON_LABELS[reason] ?? `Motif : ${reason}`;
+}
+
+function extractStatus(json: any): FeexPayStatus {
+  return (json?.status ?? json?.responsecode ?? 'PENDING') as FeexPayStatus;
 }
 
 const NETWORK_ENDPOINTS: Record<PayinNetwork, string> = {
@@ -89,7 +111,13 @@ export class PaymentsService {
 
   async initiate(
     dto: InitiatePaymentDto,
-  ): Promise<{ reference: string; network: PayinNetwork; amount: number }> {
+  ): Promise<{
+    reference: string;
+    network: PayinNetwork;
+    amount: number;
+    status: FeexPayStatus;
+    reason?: string;
+  }> {
     this.ensureConfigured();
 
     const endpoint = NETWORK_ENDPOINTS[dto.network];
@@ -119,6 +147,8 @@ export class PaymentsService {
       reference,
       network: dto.network,
       amount: dto.amount,
+      status: extractStatus(json),
+      reason: (json?.reason as string) ?? (json?.responsemsg as string) ?? undefined,
     };
   }
 
@@ -132,9 +162,10 @@ export class PaymentsService {
 
     return {
       reference: json?.reference ?? reference,
-      status: (json?.status ?? json?.responsecode ?? 'PENDING') as FeexPayStatus,
+      status: extractStatus(json),
       amount: json?.amount as number | undefined,
       phoneNumber: json?.phoneNumber as string | undefined,
+      reason: (json?.reason as string) ?? (json?.responsemsg as string) ?? undefined,
     };
   }
 }
