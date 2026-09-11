@@ -3,6 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { EventsModule } from 'src/events/events.module';
 import { ParticipantsModule } from 'src/participants/participants.module';
 import { QrcodeModule } from 'src/qrcode/qrcode.module';
+import { PaymentsModule } from 'src/payments/payments.module';
 import { Counter, CounterSchema } from './schemas/counter.schema';
 import { Registration, RegistrationSchema } from './schemas/registration.schema';
 import { CountersRepository } from './repositories/counters.repository';
@@ -19,6 +20,7 @@ import { RegistrationsController } from './registrations.controller';
     ParticipantsModule,
     EventsModule,
     QrcodeModule,
+    PaymentsModule,
   ],
   controllers: [RegistrationsController],
   providers: [RegistrationsRepository, CountersRepository, RegistrationsService],

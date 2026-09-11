@@ -30,6 +30,18 @@ export class Registration {
     default: RegistrationStatus.PENDING,
   })
   status: RegistrationStatus;
+
+  @Prop({ unique: true, sparse: true })
+  paymentRef?: string;
+
+  @Prop({ trim: true })
+  paymentNetwork?: string;
+
+  @Prop({ trim: true })
+  paymentPhone?: string;
+
+  @Prop({ type: Number })
+  paymentAmount?: number;
 }
 
 export const RegistrationSchema = SchemaFactory.createForClass(Registration);

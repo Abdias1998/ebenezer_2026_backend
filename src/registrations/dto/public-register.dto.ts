@@ -3,6 +3,7 @@ import {
   IsEmail,
   IsIn,
   IsMongoId,
+  IsNumber,
   IsOptional,
   IsString,
 } from 'class-validator';
@@ -68,4 +69,27 @@ export class PublicRegisterDto {
   @ApiProperty({ description: 'Event id' })
   @IsMongoId()
   eventId: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Référence de transaction FeexPay. Si fournie, la transaction est vérifiée (statut SUCCESSFUL) avant la génération du billet.',
+  })
+  @IsOptional()
+  @IsString()
+  paymentRef?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  paymentNetwork?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  paymentPhone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  paymentAmount?: number;
 }

@@ -10,6 +10,12 @@ export default () => ({
     expiresIn: process.env.JWT_EXPIRES_IN || '1d',
   },
   qrSecret: process.env.QR_SECRET,
+  feexpay: {
+    apiKey: process.env.FEEXPAY_API_KEY,
+    shopId: process.env.FEEXPAY_SHOP_ID,
+    baseUrl:
+      process.env.FEEXPAY_BASE_URL ?? 'https://api-v2.feexpay.me',
+  },
   seed: {
     superAdminEmail: process.env.SEED_SUPER_ADMIN_EMAIL,
     superAdminPassword: process.env.SEED_SUPER_ADMIN_PASSWORD,

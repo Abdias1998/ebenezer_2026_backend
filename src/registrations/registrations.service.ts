@@ -1,6 +1,13 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { EventsService } from 'src/events/events.service';
 import { ParticipantsService } from 'src/participants/participants.service';
+import { PaymentRequiredException } from 'src/payments/exceptions/payment-required.exception';
+import { PaymentsService } from 'src/payments/payments.service';
 import { ParticipantGender } from 'src/participants/schemas/participant.schema';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 import { PaginatedResult } from 'src/common/interfaces/paginated-result.interface';
@@ -55,7 +62,29 @@ export class RegistrationsService {
     private readonly participantsService: ParticipantsService,
     private readonly eventsService: EventsService,
     private readonly qrcodeService: QrcodeService,
+    private readonly paymentsService: PaymentsService,
   ) {}
+
+  private async verifyPayment(
+    paymentRef: string,
+    expectedAmount?: number,
+  ): Promise<void> {
+    const payment = await this.paymentsService.getStatus(paymentRef);
+
+    if (payment.status !== 'SUCCESSFUL') {
+      throw new PaymentRequiredException(
+        payment.status === 'FAILED'
+          ? 'Le paiement a échoué ou a été annulé. Veuillez réessayer.'
+          : 'Le paiement n\u2019est pas encore confirmé. Veuillez finaliser le paiement avant de réserver votre billet.',
+      );
+    }
+
+    if (expectedAmount && payment.amount && payment.amount < expectedAmount) {
+      throw new BadRequestException(
+        'Le montant payé est insuffisant pour cet événement.',
+      );
+    }
+  }
 
   async create(dto: CreateRegistrationDto): Promise<RegistrationDocument> {
     await this.participantsService.findById(dto.participantId);
@@ -128,6 +157,10 @@ export class RegistrationsService {
       );
     }
 
+    if (dto.paymentRef) {
+      await this.verifyPayment(dto.paymentRef, dto.paymentAmount);
+    }
+
     const year = new Date().getFullYear();
     const sequence = await this.countersRepository.getNextSequence(
       `registration:${year}`,
@@ -142,6 +175,10 @@ export class RegistrationsService {
       event: dto.eventId,
       registrationNumber,
       code,
+      paymentRef: dto.paymentRef,
+      paymentNetwork: dto.paymentNetwork,
+      paymentPhone: dto.paymentPhone,
+      paymentAmount: dto.paymentAmount,
     });
 
     const token = this.qrcodeService.buildToken(
