@@ -3,12 +3,15 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Param,
   Patch,
   Post,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { PERMISSIONS } from 'src/common/constants/permissions.constant';
@@ -44,6 +47,18 @@ export class RegistrationsController {
   @Permissions(PERMISSIONS.REGISTRATIONS.READ)
   findAll(@Query() query: QueryRegistrationsDto) {
     return this.registrationsService.findAll(query);
+  }
+
+  @Get('export')
+  @Header('Content-Type', 'application/pdf')
+  @Header('Content-Disposition', 'attachment; filename="inscrits.pdf"')
+  @Permissions(PERMISSIONS.REGISTRATIONS.READ)
+  async exportPdf(
+    @Query() query: QueryRegistrationsDto,
+    @Res() res: Response,
+  ) {
+    const buffer = await this.registrationsService.exportPdf(query);
+    res.send(buffer);
   }
 
   @Get(':id')

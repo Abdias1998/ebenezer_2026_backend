@@ -16,6 +16,10 @@ import { CreateRegistrationDto } from './dto/create-registration.dto';
 import { PublicRegisterDto } from './dto/public-register.dto';
 import { QueryRegistrationsDto } from './dto/query-registrations.dto';
 import { UpdateRegistrationStatusDto } from './dto/update-registration-status.dto';
+import {
+  buildRegistrationsPdfBuffer,
+  RegistrationsPdfRow,
+} from './pdf-report.util';
 import { CountersRepository } from './repositories/counters.repository';
 import { RegistrationsRepository } from './repositories/registrations.repository';
 import {
@@ -24,6 +28,29 @@ import {
 } from './schemas/registration.schema';
 
 const DEFAULT_REGISTRATION_PREFIX = 'EBEN';
+
+const PAYMENT_NETWORK_LABELS: Record<string, string> = {
+  mtn: 'MTN',
+  moov: 'Moov',
+  celtiis_bj: 'Celtiis',
+};
+
+interface ParticipantInfo {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  city?: string;
+  country?: string;
+  church?: string;
+  tshirtSize?: string;
+  pickupLocation?: string;
+  photo?: string;
+}
+
+interface EventInfo {
+  name?: string;
+}
 
 const GENDER_MAP: Record<'male' | 'female', ParticipantGender> = {
   male: ParticipantGender.MALE,
@@ -265,6 +292,64 @@ export class RegistrationsService {
     );
 
     return { items, meta: result.meta };
+  }
+
+  async exportPdf(query: QueryRegistrationsDto): Promise<Buffer> {
+    const filter: FilterQuery<Registration> = {};
+    if (query.event) filter.event = query.event;
+    if (query.paid === 'true') {
+      filter.paymentRef = { $exists: true, $ne: null };
+    }
+
+    const result = await this.registrationsRepository.findAll(filter, {
+      page: 1,
+      limit: 1000,
+      sortBy: query.sortBy ?? 'createdAt',
+      sortOrder: query.sortOrder ?? 'asc',
+    });
+
+    const rows: RegistrationsPdfRow[] = await Promise.all(
+      result.items.map(async (registration, index) => {
+        await registration.populate('participant');
+        await registration.populate('event');
+        const participant = (registration.participant ??
+          {}) as ParticipantInfo;
+        const event = (registration.event ?? {}) as EventInfo;
+        const fullName = [participant.firstName, participant.lastName]
+          .filter(Boolean)
+          .join(' ')
+          .trim();
+        const network = registration.paymentNetwork
+          ? PAYMENT_NETWORK_LABELS[registration.paymentNetwork] ??
+            registration.paymentNetwork
+          : '';
+        const amount =
+          registration.paymentAmount != null
+            ? `${registration.paymentAmount
+                .toLocaleString('fr-FR')
+                .replace(/\u202f/g, ' ')} FCFA`
+            : '';
+        return {
+          index: index + 1,
+          registrationNumber: registration.registrationNumber,
+          fullName,
+          phone: participant.phone ?? '',
+          email: participant.email ?? '',
+          tshirtSize: participant.tshirtSize ?? '',
+          pickupLocation: participant.pickupLocation ?? '',
+          network,
+          amount,
+        };
+      }),
+    );
+
+    return buildRegistrationsPdfBuffer({
+      eventName: result.items[0]
+        ? ((result.items[0].event ?? {}) as EventInfo).name
+        : undefined,
+      generatedAt: new Date(),
+      rows,
+    });
   }
 
   async findById(id: string): Promise<RegistrationDocument> {
