@@ -1,5 +1,13 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsInt, IsString, Matches, Max, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Matches,
+  Max,
+  Min,
+} from 'class-validator';
 
 export const PAYIN_NETWORKS = ['mtn', 'moov', 'celtiis_bj'] as const;
 export type PayinNetwork = (typeof PAYIN_NETWORKS)[number];
@@ -32,4 +40,20 @@ export class InitiatePaymentDto {
       "Numéro Mobile Money invalide (ex : 67919150, 0167919150 ou +2290167919150)",
   })
   phoneNumber: string;
+
+  @ApiPropertyOptional({
+    description: 'Prénom du payeur (envoyé à FeexPay)',
+    example: 'Jean-Marc',
+  })
+  @IsOptional()
+  @IsString()
+  firstName?: string;
+
+  @ApiPropertyOptional({
+    description: 'Nom du payeur (envoyé à FeexPay)',
+    example: 'Dupont',
+  })
+  @IsOptional()
+  @IsString()
+  lastName?: string;
 }

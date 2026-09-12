@@ -4,20 +4,24 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { FilterQuery } from 'mongoose';
 import { EventsService } from 'src/events/events.service';
 import { ParticipantsService } from 'src/participants/participants.service';
 import { PaymentRequiredException } from 'src/payments/exceptions/payment-required.exception';
 import { PaymentsService } from 'src/payments/payments.service';
 import { ParticipantGender } from 'src/participants/schemas/participant.schema';
-import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 import { PaginatedResult } from 'src/common/interfaces/paginated-result.interface';
 import { QrcodeService } from 'src/qrcode/qrcode.service';
 import { CreateRegistrationDto } from './dto/create-registration.dto';
 import { PublicRegisterDto } from './dto/public-register.dto';
+import { QueryRegistrationsDto } from './dto/query-registrations.dto';
 import { UpdateRegistrationStatusDto } from './dto/update-registration-status.dto';
 import { CountersRepository } from './repositories/counters.repository';
 import { RegistrationsRepository } from './repositories/registrations.repository';
-import { RegistrationDocument } from './schemas/registration.schema';
+import {
+  Registration,
+  RegistrationDocument,
+} from './schemas/registration.schema';
 
 const DEFAULT_REGISTRATION_PREFIX = 'EBEN';
 
@@ -216,10 +220,37 @@ export class RegistrationsService {
     };
   }
 
-  findAll(
-    query: PaginationQueryDto,
-  ): Promise<PaginatedResult<RegistrationDocument>> {
-    return this.registrationsRepository.findAll({}, query);
+  async findAll(
+    query: QueryRegistrationsDto,
+  ): Promise<PaginatedResult<Record<string, unknown>>> {
+    const filter: FilterQuery<Registration> = {};
+    if (query.event) {
+      filter.event = query.event;
+    }
+    if (query.paid === 'true') {
+      filter.paymentRef = { $exists: true, $ne: null };
+    }
+
+    const result = await this.registrationsRepository.findAll(filter, query);
+
+    const items = await Promise.all(
+      result.items.map(async (registration) => {
+        await registration.populate('participant');
+        await registration.populate('event');
+        const token = this.qrcodeService.buildToken(
+          registration.id,
+          registration.code,
+        );
+        const qrCode = await this.qrcodeService.toImageDataUrl(token);
+        return {
+          ...registration.toObject(),
+          id: registration.id,
+          qrCode,
+        };
+      }),
+    );
+
+    return { items, meta: result.meta };
   }
 
   async findById(id: string): Promise<RegistrationDocument> {

@@ -138,6 +138,8 @@ export class PaymentsService {
           shop: this.shopId,
           amount: dto.amount,
           phoneNumber: this.toInternational(dto.phoneNumber),
+          first_name: dto.firstName,
+          last_name: dto.lastName,
         }),
       },
     );

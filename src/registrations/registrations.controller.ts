@@ -14,10 +14,10 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { PERMISSIONS } from 'src/common/constants/permissions.constant';
 import { Permissions } from 'src/common/decorators/permissions.decorator';
 import { Public } from 'src/common/decorators/public.decorator';
-import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { CreateRegistrationDto } from './dto/create-registration.dto';
 import { PublicRegisterDto } from './dto/public-register.dto';
+import { QueryRegistrationsDto } from './dto/query-registrations.dto';
 import { UpdateRegistrationStatusDto } from './dto/update-registration-status.dto';
 import { RegistrationsService } from './registrations.service';
 
@@ -42,7 +42,7 @@ export class RegistrationsController {
 
   @Get()
   @Permissions(PERMISSIONS.REGISTRATIONS.READ)
-  findAll(@Query() query: PaginationQueryDto) {
+  findAll(@Query() query: QueryRegistrationsDto) {
     return this.registrationsService.findAll(query);
   }
 
