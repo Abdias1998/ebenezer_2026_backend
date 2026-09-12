@@ -188,6 +188,7 @@ export class RegistrationsService {
     const token = this.qrcodeService.buildToken(
       registration.id,
       registration.code,
+      this.qrInfo(participant, event.name, registration.registrationNumber),
     );
     const qrCode = await this.qrcodeService.toImageDataUrl(token);
 
@@ -237,9 +238,22 @@ export class RegistrationsService {
       result.items.map(async (registration) => {
         await registration.populate('participant');
         await registration.populate('event');
+        const participant = registration.participant as unknown as {
+          firstName?: string;
+          lastName?: string;
+          email?: string;
+          phone?: string;
+          city?: string;
+          country?: string;
+          church?: string;
+          tshirtSize?: string;
+          pickupLocation?: string;
+        };
+        const event = registration.event as unknown as { name?: string };
         const token = this.qrcodeService.buildToken(
           registration.id,
           registration.code,
+          this.qrInfo(participant, event.name, registration.registrationNumber),
         );
         const qrCode = await this.qrcodeService.toImageDataUrl(token);
         return {
@@ -265,12 +279,64 @@ export class RegistrationsService {
     id: string,
   ): Promise<{ registrationNumber: string; qrCode: string }> {
     const registration = await this.findById(id);
+    await registration.populate('participant');
+    await registration.populate('event');
+    const participant = registration.participant as unknown as {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      phone?: string;
+      city?: string;
+      country?: string;
+      church?: string;
+      tshirtSize?: string;
+      pickupLocation?: string;
+    };
+    const event = registration.event as unknown as { name?: string };
     const token = this.qrcodeService.buildToken(
       registration.id,
       registration.code,
+      this.qrInfo(participant, event.name, registration.registrationNumber),
     );
     const qrCode = await this.qrcodeService.toImageDataUrl(token);
     return { registrationNumber: registration.registrationNumber, qrCode };
+  }
+
+  /**
+   * Extrait les informations de la personne embarquées dans le QR code.
+   */
+  private qrInfo(
+    participant: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      phone?: string;
+      city?: string;
+      country?: string;
+      church?: string;
+      tshirtSize?: string;
+      pickupLocation?: string;
+    },
+    eventName?: string,
+    registrationNumber?: string,
+  ): Record<string, unknown> {
+    return {
+      registrationNumber,
+      eventName,
+      firstName: participant.firstName,
+      lastName: participant.lastName,
+      fullName: [participant.firstName, participant.lastName]
+        .filter(Boolean)
+        .join(' ')
+        .trim() || undefined,
+      email: participant.email,
+      phone: participant.phone,
+      city: participant.city,
+      country: participant.country,
+      church: participant.church,
+      tshirtSize: participant.tshirtSize,
+      pickupLocation: participant.pickupLocation,
+    };
   }
 
   async updateStatus(

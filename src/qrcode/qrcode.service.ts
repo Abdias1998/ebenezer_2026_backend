@@ -19,13 +19,23 @@ export class QrcodeService {
   }
 
   /**
-   * Builds the signed token embedded in the QR image: `registrationId.code.hmac`.
-   * The signature only proves the token was minted by this server - it does
-   * not replace the DB lookup for status/duplicate-scan checks.
+   * Builds the signed JSON payload embedded in the QR image. The signature
+   * (HMAC over `registrationId.code`) only proves the token was minted by
+   * this server. All the participant info is embedded as human-readable
+   * data, but the DB lookup remains the source of truth for the status.
    */
-  buildToken(registrationId: string, code: string): string {
+  buildToken(
+    registrationId: string,
+    code: string,
+    info: Record<string, unknown> = {},
+  ): string {
     const signature = this.sign(registrationId, code);
-    return [registrationId, code, signature].join(TOKEN_SEPARATOR);
+    return JSON.stringify({
+      registrationId,
+      code,
+      signature,
+      ...info,
+    });
   }
 
   async toImageDataUrl(token: string): Promise<string> {
@@ -33,11 +43,35 @@ export class QrcodeService {
   }
 
   verify(token: string): QrPayload {
-    const parts = token.split(TOKEN_SEPARATOR);
-    if (parts.length !== 3) {
-      throw new BadRequestException('Invalid QR code');
+    let registrationId: string;
+    let code: string;
+    let signature: string;
+
+    try {
+      const parsed = JSON.parse(token) as {
+        registrationId?: unknown;
+        code?: unknown;
+        signature?: unknown;
+      };
+      if (
+        typeof parsed.registrationId !== 'string' ||
+        typeof parsed.code !== 'string' ||
+        typeof parsed.signature !== 'string'
+      ) {
+        throw new Error('malformed JSON payload');
+      }
+      registrationId = parsed.registrationId;
+      code = parsed.code;
+      signature = parsed.signature;
+    } catch {
+      // Backward compatibility: legacy "registrationId.code.signature" tokens
+      const parts = token.split(TOKEN_SEPARATOR);
+      if (parts.length !== 3) {
+        throw new BadRequestException('Invalid QR code');
+      }
+      [registrationId, code, signature] = parts;
     }
-    const [registrationId, code, signature] = parts;
+
     const expectedSignature = this.sign(registrationId, code);
 
     const provided = Buffer.from(signature, 'hex');
