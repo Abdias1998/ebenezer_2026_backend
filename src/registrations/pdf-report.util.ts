@@ -4,7 +4,7 @@ const PAGE_WIDTH = 841.89; // A4 paysage (pt)
 const PAGE_HEIGHT = 595.28;
 const MARGIN = 36;
 const TABLE_TOP = 108;
-const ROW_HEIGHT = 19;
+const ROW_HEIGHT = 12;
 const HEADER_FILL = '#b3233f';
 const HEADER_TEXT = '#ffffff';
 const ROW_TEXT = '#1f2937';
@@ -76,7 +76,7 @@ export function buildRegistrationsPdfBuffer(
         .font('Helvetica-Bold')
         .fontSize(8)
         .fillColor(HEADER_TEXT)
-        .text(col.label, x + 5, y + 6, {
+        .text(col.label, x + 5, y + 3, {
           width: col.width - 8,
           lineBreak: false,
           ellipsis: true,
@@ -142,7 +142,7 @@ export function buildRegistrationsPdfBuffer(
     doc.font('Helvetica').fontSize(8).fillColor(ROW_TEXT);
     for (const col of COLUMNS) {
       const value = truncate(String(row[col.key] ?? ''), 42);
-      doc.text(value, x + 5, y + 6, {
+      doc.text(value, x + 5, y + 3, {
         width: col.width - 8,
         lineBreak: false,
         ellipsis: true,
