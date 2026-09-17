@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsIn,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   Matches,
@@ -56,4 +57,24 @@ export class InitiatePaymentDto {
   @IsOptional()
   @IsString()
   lastName?: string;
+
+  @ApiPropertyOptional({
+    description:
+      "Données du payeur (tout ce qui a été saisi dans le formulaire). FeexPay les renvoie intactes dans le callback/webhook, ce qui permet de rattacher chaque paiement à son inscription.",
+    type: Object,
+    example: {
+      email: 'vous@exemple.com',
+      phone: '+229 97 00 00 00',
+      city: 'Cotonou',
+      country: 'Bénin',
+      church: 'Centre La Grâce Parle Jericho',
+      tshirtSize: 'L',
+      pickupLocation: 'CEG Godomey',
+      paymentNetwork: 'celtiis_bj',
+      paymentPhone: '0140433935',
+    },
+  })
+  @IsOptional()
+  @IsObject()
+  callbackInfo?: Record<string, unknown>;
 }

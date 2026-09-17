@@ -18,6 +18,7 @@ import { PERMISSIONS } from 'src/common/constants/permissions.constant';
 import { Permissions } from 'src/common/decorators/permissions.decorator';
 import { Public } from 'src/common/decorators/public.decorator';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
+import { AdminRattrapageDto } from './dto/admin-rattrapage.dto';
 import { CreateRegistrationDto } from './dto/create-registration.dto';
 import { PublicRegisterDto } from './dto/public-register.dto';
 import { QueryRegistrationsDto } from './dto/query-registrations.dto';
@@ -35,6 +36,12 @@ export class RegistrationsController {
   @Post('public')
   createPublic(@Body() dto: PublicRegisterDto) {
     return this.registrationsService.createPublic(dto);
+  }
+
+  @Post('rattrapage')
+  @Permissions(PERMISSIONS.REGISTRATIONS.CREATE)
+  createFromPayment(@Body() dto: AdminRattrapageDto) {
+    return this.registrationsService.createFromPayment(dto);
   }
 
   @Post()

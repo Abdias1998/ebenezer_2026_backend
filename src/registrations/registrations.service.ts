@@ -12,6 +12,7 @@ import { PaymentsService } from 'src/payments/payments.service';
 import { ParticipantGender } from 'src/participants/schemas/participant.schema';
 import { PaginatedResult } from 'src/common/interfaces/paginated-result.interface';
 import { QrcodeService } from 'src/qrcode/qrcode.service';
+import { AdminRattrapageDto } from './dto/admin-rattrapage.dto';
 import { CreateRegistrationDto } from './dto/create-registration.dto';
 import { PublicRegisterDto } from './dto/public-register.dto';
 import { QueryRegistrationsDto } from './dto/query-registrations.dto';
@@ -151,6 +152,39 @@ export class RegistrationsService {
   async createPublic(
     dto: PublicRegisterDto,
   ): Promise<PublicRegistrationResponse> {
+    return this.completeRegistration(dto);
+  }
+
+  /**
+   * Rattrapage admin : crée une inscription à partir d'une référence de
+   * paiement FeexPay déjà confirmée, en ressaisissant les informations du
+   * payeur. Utilisé quand le paiement a abouti côté FeexPay mais que
+   * l'inscription n'a jamais été enregistrée.
+   */
+  async createFromPayment(
+    dto: AdminRattrapageDto,
+  ): Promise<PublicRegistrationResponse> {
+    return this.completeRegistration(dto);
+  }
+
+  private async completeRegistration(dto: {
+    firstName: string;
+    lastName: string;
+    gender?: 'male' | 'female';
+    phone: string;
+    whatsapp?: string;
+    email?: string;
+    city?: string;
+    country?: string;
+    church?: string;
+    tshirtSize?: string;
+    pickupLocation?: string;
+    eventId: string;
+    paymentRef?: string;
+    paymentNetwork?: string;
+    paymentPhone?: string;
+    paymentAmount?: number;
+  }): Promise<PublicRegistrationResponse> {
     const event = await this.eventsService.findById(dto.eventId);
 
     let participant = await this.participantsService.findByEmailOrPhone(
@@ -189,6 +223,15 @@ export class RegistrationsService {
     }
 
     if (dto.paymentRef) {
+      const usedPayment = await this.registrationsRepository.findByPaymentRef(
+        dto.paymentRef,
+      );
+      if (usedPayment) {
+        throw new ConflictException(
+          'Cette référence de paiement a déjà été utilisée pour une inscription.',
+        );
+      }
+
       await this.verifyPayment(dto.paymentRef, dto.paymentAmount);
     }
 

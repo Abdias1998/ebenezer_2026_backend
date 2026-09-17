@@ -32,8 +32,51 @@ export function readablePaymentReason(reason?: string): string {
   return REASON_LABELS[reason] ?? `Motif : ${reason}`;
 }
 
+const SUCCESS_STATUSES = new Set([
+  'SUCCESSFUL',
+  'SUCCESS',
+  'SUCCEEDED',
+  'PAID',
+  'COMPLETED',
+  'CONFIRMED',
+]);
+
+const FAILED_STATUSES = new Set([
+  'FAILED',
+  'FAIL',
+  'FAILURE',
+  'TIMEOUT',
+  'EXPIRED',
+  'CANCELLED',
+  'CANCELED',
+  'REJECTED',
+  'DECLINED',
+  'REFUSED',
+  'INSUFFICIENT_FUNDS',
+  'EXCEEDED_LIMIT',
+  'TRANSACTION_FAILED',
+  'OPERATION_TIMED_OUT',
+  'PAYEE_NOT_REACHABLE',
+  'INVALID_PHONE_NUMBER',
+  'LOW_BALANCE_OR_PAYEE_LIMIT_REACHED_OR_NOT_ALLOWED',
+]);
+
+/**
+ * Normalise le statut renvoyé par FeexPay vers la valeur canonique
+ * PENDING | SUCCESSFUL | FAILED. FeexPay n'est pas cohérent d'un réseau à
+ * l'autre (p. ex. Celtiis peut renvoyer "SUCCESS", "TIMEOUT" ou
+ * "INSUFFICIENT_FUNDS") : sans cette normalisation, les paiements confirmés
+ * restaient "en attente" et n'apparaissaient jamais dans le backend admin.
+ */
+export function normalizeFeexpayStatus(raw?: unknown): FeexPayStatus {
+  const value = String(raw ?? '').trim().toUpperCase();
+  if (SUCCESS_STATUSES.has(value)) return 'SUCCESSFUL';
+  if (FAILED_STATUSES.has(value)) return 'FAILED';
+  return 'PENDING';
+}
+
 function extractStatus(json: any): FeexPayStatus {
-  return (json?.status ?? json?.responsecode ?? 'PENDING') as FeexPayStatus;
+  return normalizeFeexpayStatus(json?.status ?? json?.responsecode);
 }
 
 const NETWORK_ENDPOINTS: Record<PayinNetwork, string> = {
@@ -140,12 +183,17 @@ export class PaymentsService {
           phoneNumber: this.toInternational(dto.phoneNumber),
           first_name: dto.firstName,
           last_name: dto.lastName,
+          callback_info: dto.callbackInfo,
         }),
       },
     );
 
     const reference =
-      json?.reference ?? json?.order_id ?? json?.trx_id ?? json?.reference_id;
+      json?.reference ??
+      json?.transref ??
+      json?.order_id ??
+      json?.trx_id ??
+      json?.reference_id;
 
     if (!reference) {
       this.logger.warn('FeexPay requestToPay did not return a reference');
@@ -171,9 +219,17 @@ export class PaymentsService {
       { method: 'GET' },
     );
 
+    const rawStatus = json?.status ?? json?.responsecode ?? 'PENDING';
+    const status = extractStatus(json);
+    if (String(rawStatus).toUpperCase().trim() !== status) {
+      this.logger.debug(
+        `FeexPay status for ${reference} was "${rawStatus}", normalized to "${status}"`,
+      );
+    }
+
     return {
       reference: json?.reference ?? reference,
-      status: extractStatus(json),
+      status,
       amount: json?.amount as number | undefined,
       phoneNumber: json?.phoneNumber as string | undefined,
       reason: (json?.reason as string) ?? (json?.responsemsg as string) ?? undefined,

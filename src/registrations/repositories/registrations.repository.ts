@@ -22,4 +22,10 @@ export class RegistrationsRepository extends BaseRepository<RegistrationDocument
   async findByCode(code: string): Promise<RegistrationDocument | null> {
     return this.findOne({ code });
   }
+
+  async findByPaymentRef(
+    paymentRef: string,
+  ): Promise<RegistrationDocument | null> {
+    return this.findOne({ paymentRef });
+  }
 }
