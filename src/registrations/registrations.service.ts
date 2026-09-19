@@ -212,15 +212,10 @@ export class RegistrationsService {
       await this.participantsService.update(participant.id, participantData);
     }
 
-    const existing = await this.registrationsRepository.findByParticipantAndEvent(
+    let registration = await this.registrationsRepository.findByParticipantAndEvent(
       participant.id,
       dto.eventId,
     );
-    if (existing) {
-      throw new ConflictException(
-        'Vous êtes déjà inscrit(e) à cet événement.',
-      );
-    }
 
     if (dto.paymentRef) {
       const usedPayment = await this.registrationsRepository.findByPaymentRef(
@@ -235,25 +230,46 @@ export class RegistrationsService {
       await this.verifyPayment(dto.paymentRef, dto.paymentAmount);
     }
 
-    const year = new Date().getFullYear();
-    const sequence = await this.countersRepository.getNextSequence(
-      `registration:${year}`,
-    );
-    const registrationNumber = `${event.registrationPrefix ?? DEFAULT_REGISTRATION_PREFIX}-${year}-${String(
-      sequence,
-    ).padStart(6, '0')}`;
-    const code = this.qrcodeService.generateOpaqueCode();
+    if (registration) {
+      if (!registration.paymentRef && dto.paymentRef) {
+        registration = await this.registrationsRepository.updateById(
+          registration.id,
+          {
+            paymentRef: dto.paymentRef,
+            paymentNetwork: dto.paymentNetwork,
+            paymentPhone: dto.paymentPhone,
+            paymentAmount: dto.paymentAmount,
+          },
+        );
+        if (!registration) {
+          throw new NotFoundException('Registration not found');
+        }
+      } else {
+        throw new ConflictException(
+          'Vous êtes déjà inscrit(e) à cet événement.',
+        );
+      }
+    } else {
+      const year = new Date().getFullYear();
+      const sequence = await this.countersRepository.getNextSequence(
+        `registration:${year}`,
+      );
+      const registrationNumber = `${event.registrationPrefix ?? DEFAULT_REGISTRATION_PREFIX}-${year}-${String(
+        sequence,
+      ).padStart(6, '0')}`;
+      const code = this.qrcodeService.generateOpaqueCode();
 
-    const registration = await this.registrationsRepository.create({
-      participant: participant.id,
-      event: dto.eventId,
-      registrationNumber,
-      code,
-      paymentRef: dto.paymentRef,
-      paymentNetwork: dto.paymentNetwork,
-      paymentPhone: dto.paymentPhone,
-      paymentAmount: dto.paymentAmount,
-    });
+      registration = await this.registrationsRepository.create({
+        participant: participant.id,
+        event: dto.eventId,
+        registrationNumber,
+        code,
+        paymentRef: dto.paymentRef,
+        paymentNetwork: dto.paymentNetwork,
+        paymentPhone: dto.paymentPhone,
+        paymentAmount: dto.paymentAmount,
+      });
+    }
 
     const token = this.qrcodeService.buildToken(
       registration.id,
