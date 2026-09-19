@@ -164,27 +164,30 @@ export class RegistrationsService {
   async createFromPayment(
     dto: AdminRattrapageDto,
   ): Promise<PublicRegistrationResponse> {
-    return this.completeRegistration(dto);
+    return this.completeRegistration(dto, { updateExistingParticipant: false });
   }
 
-  private async completeRegistration(dto: {
-    firstName: string;
-    lastName: string;
-    gender?: 'male' | 'female';
-    phone: string;
-    whatsapp?: string;
-    email?: string;
-    city?: string;
-    country?: string;
-    church?: string;
-    tshirtSize?: string;
-    pickupLocation?: string;
-    eventId: string;
-    paymentRef?: string;
-    paymentNetwork?: string;
-    paymentPhone?: string;
-    paymentAmount?: number;
-  }): Promise<PublicRegistrationResponse> {
+  private async completeRegistration(
+    dto: {
+      firstName: string;
+      lastName: string;
+      gender?: 'male' | 'female';
+      phone: string;
+      whatsapp?: string;
+      email?: string;
+      city?: string;
+      country?: string;
+      church?: string;
+      tshirtSize?: string;
+      pickupLocation?: string;
+      eventId: string;
+      paymentRef?: string;
+      paymentNetwork?: string;
+      paymentPhone?: string;
+      paymentAmount?: number;
+    },
+    options?: { updateExistingParticipant?: boolean },
+  ): Promise<PublicRegistrationResponse> {
     const event = await this.eventsService.findById(dto.eventId);
 
     let participant = await this.participantsService.findByEmailOrPhone(
@@ -192,24 +195,31 @@ export class RegistrationsService {
       dto.phone,
     );
 
-    const participantData = {
-      firstName: dto.firstName,
-      lastName: dto.lastName,
-      gender: dto.gender ? GENDER_MAP[dto.gender] : undefined,
-      phone: dto.phone,
-      whatsapp: dto.whatsapp,
-      email: dto.email,
-      city: dto.city,
-      country: dto.country,
-      church: dto.church,
-      tshirtSize: dto.tshirtSize,
-      pickupLocation: dto.pickupLocation,
-    };
+    const patch: Record<string, string> = {};
+    if (dto.firstName) patch.firstName = dto.firstName;
+    if (dto.lastName) patch.lastName = dto.lastName;
+    if (dto.gender) patch.gender = GENDER_MAP[dto.gender];
+    if (dto.phone) patch.phone = dto.phone;
+    if (dto.whatsapp) patch.whatsapp = dto.whatsapp;
+    if (dto.email) patch.email = dto.email;
+    if (dto.city) patch.city = dto.city;
+    if (dto.country) patch.country = dto.country;
+    if (dto.church) patch.church = dto.church;
+    if (dto.tshirtSize) patch.tshirtSize = dto.tshirtSize;
+    if (dto.pickupLocation) patch.pickupLocation = dto.pickupLocation;
 
     if (!participant) {
-      participant = await this.participantsService.create(participantData);
-    } else {
-      await this.participantsService.update(participant.id, participantData);
+      participant = await this.participantsService.create({
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        phone: dto.phone,
+        ...patch,
+      });
+    } else if (
+      options?.updateExistingParticipant !== false &&
+      Object.keys(patch).length > 0
+    ) {
+      await this.participantsService.update(participant.id, patch);
     }
 
     let registration = await this.registrationsRepository.findByParticipantAndEvent(
