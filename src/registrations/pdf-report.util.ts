@@ -109,29 +109,39 @@ export function buildRegistrationsPdfBuffer(
     );
 
   let y = TABLE_TOP;
+  let pageNumber = 1;
   drawTableHeader(y);
   y += ROW_HEIGHT;
 
   const drawPageNumber = () => {
+    const previousBottomMargin = doc.page.margins.bottom;
+    doc.page.margins.bottom = 0;
     doc
       .font('Helvetica')
       .fontSize(8)
       .fillColor('#9ca3af')
       .text(
-        `Page ${doc.bufferedPageRange().count}`,
+        `Page ${pageNumber}`,
         PAGE_WIDTH - MARGIN - 60,
         PAGE_HEIGHT - MARGIN + 22,
         { width: 60, align: 'right' },
       );
+    doc.page.margins.bottom = previousBottomMargin;
     doc.fillColor(ROW_TEXT);
+  };
+
+  const startNewPage = () => {
+    drawPageNumber();
+    doc.addPage();
+    pageNumber += 1;
+    y = TABLE_TOP;
+    drawTableHeader(y);
+    y += ROW_HEIGHT;
   };
 
   for (const row of params.rows) {
     if (y + ROW_HEIGHT > PAGE_HEIGHT - MARGIN) {
-      doc.addPage();
-      y = TABLE_TOP;
-      drawTableHeader(y);
-      y += ROW_HEIGHT;
+      startNewPage();
     }
 
     if (row.index % 2 === 0) {
@@ -150,9 +160,9 @@ export function buildRegistrationsPdfBuffer(
       x += col.width;
     }
     y += ROW_HEIGHT;
-    drawPageNumber();
   }
 
+  drawPageNumber();
   doc.end();
   return deferred;
 }
