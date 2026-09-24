@@ -31,6 +31,7 @@ import { RegistrationsRepository } from './repositories/registrations.repository
 import {
   Registration,
   RegistrationDocument,
+  RegistrationStatus,
 } from './schemas/registration.schema';
 
 const DEFAULT_REGISTRATION_PREFIX = 'EBEN';
@@ -275,6 +276,7 @@ export class RegistrationsService {
             paymentNetwork: dto.paymentNetwork,
             paymentPhone: dto.paymentPhone,
             paymentAmount: dto.paymentAmount,
+            status: RegistrationStatus.CONFIRMED,
           },
         );
         if (!registration) {
@@ -304,6 +306,9 @@ export class RegistrationsService {
         paymentNetwork: dto.paymentNetwork,
         paymentPhone: dto.paymentPhone,
         paymentAmount: dto.paymentAmount,
+        status: dto.paymentRef
+          ? RegistrationStatus.CONFIRMED
+          : RegistrationStatus.PENDING,
       });
     }
 
@@ -516,14 +521,81 @@ export class RegistrationsService {
     if (query.paid === 'true') {
       filter.paymentRef = { $exists: true, $ne: null };
     }
+    if (query.status) {
+      filter.status = query.status;
+    }
+    if (query.paymentNetwork) {
+      filter.paymentNetwork = query.paymentNetwork;
+    }
 
-    const result = await this.registrationsRepository.findAll(filter, query);
+    const participantFilter: FilterQuery<Record<string, unknown>> = {};
+    if (query.tshirtSize) {
+      participantFilter.tshirtSize = query.tshirtSize;
+    }
+    if (query.pickupLocation) {
+      participantFilter.pickupLocation = query.pickupLocation;
+    }
+    if (query.city) {
+      participantFilter.city = query.city;
+    }
+    if (query.church) {
+      participantFilter.church = query.church;
+    }
+    if (query.search) {
+      const search = query.search.trim();
+      if (search) {
+        participantFilter.$or = [
+          { firstName: { $regex: search, $options: 'i' } },
+          { lastName: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+          { phone: { $regex: search, $options: 'i' } },
+        ];
+      }
+    }
+
+    const result = Object.keys(participantFilter).length
+      ? await this.registrationsRepository.findFiltered(
+          filter,
+          participantFilter,
+          query,
+        )
+      : await this.registrationsRepository.findAll(filter, query);
 
     const items = await Promise.all(
       result.items.map(async (registration) => {
-        await registration.populate('participant');
-        await registration.populate('event');
-        const participant = registration.participant as unknown as {
+        if ('participantDoc' in registration) {
+          const r = registration as Record<string, unknown> & {
+            _id: unknown;
+            participantDoc?: Record<string, unknown>;
+            eventDoc?: { name?: string };
+          };
+          const participant = (r.participantDoc ?? {}) as {
+            firstName?: string;
+            lastName?: string;
+            email?: string;
+            phone?: string;
+            city?: string;
+            country?: string;
+            church?: string;
+            tshirtSize?: string;
+            pickupLocation?: string;
+          };
+          const event = (r.eventDoc ?? {}) as { name?: string };
+          const token = this.qrcodeService.buildToken(
+            String(r._id),
+            String(r.code),
+            this.qrInfo(participant, event.name, String(r.registrationNumber)),
+          );
+          const qrCode = await this.qrcodeService.toImageDataUrl(token);
+          const { participantDoc: _pd, eventDoc: _ed, ...rest } = r;
+          void _pd;
+          void _ed;
+          return { ...rest, participant, id: String(r._id), qrCode };
+        }
+        const reg = registration as unknown as RegistrationDocument;
+        await reg.populate('participant');
+        await reg.populate('event');
+        const participant = reg.participant as unknown as {
           firstName?: string;
           lastName?: string;
           email?: string;
@@ -534,22 +606,41 @@ export class RegistrationsService {
           tshirtSize?: string;
           pickupLocation?: string;
         };
-        const event = registration.event as unknown as { name?: string };
+        const event = reg.event as unknown as { name?: string };
         const token = this.qrcodeService.buildToken(
-          registration.id,
-          registration.code,
-          this.qrInfo(participant, event.name, registration.registrationNumber),
+          reg.id,
+          reg.code,
+          this.qrInfo(participant, event.name, reg.registrationNumber),
         );
         const qrCode = await this.qrcodeService.toImageDataUrl(token);
         return {
-          ...registration.toObject(),
-          id: registration.id,
+          ...reg.toObject(),
+          id: reg.id,
           qrCode,
         };
       }),
     );
 
     return { items, meta: result.meta };
+  }
+
+  async getStats(query: QueryRegistrationsDto): Promise<{
+    total: number;
+    byTshirtSize: { value: string; count: number }[];
+    byPickupLocation: { value: string; count: number }[];
+    byCity: { value: string; count: number }[];
+    byChurch: { value: string; count: number }[];
+    byPaymentNetwork: { value: string; count: number }[];
+    byStatus: { value: string; count: number }[];
+  }> {
+    const filter: FilterQuery<Registration> = {};
+    if (query.event) {
+      filter.event = query.event;
+    }
+    if (query.paid === 'true') {
+      filter.paymentRef = { $exists: true, $ne: null };
+    }
+    return this.registrationsRepository.aggregateStats(filter);
   }
 
   async exportPdf(query: QueryRegistrationsDto): Promise<Buffer> {

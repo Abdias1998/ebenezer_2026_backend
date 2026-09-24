@@ -56,6 +56,12 @@ export class RegistrationsController {
     return this.registrationsService.findAll(query);
   }
 
+  @Get('stats')
+  @Permissions(PERMISSIONS.REGISTRATIONS.READ)
+  getStats(@Query() query: QueryRegistrationsDto) {
+    return this.registrationsService.getStats(query);
+  }
+
   @Get('export')
   @Header('Content-Type', 'application/pdf')
   @Header('Content-Disposition', 'attachment; filename="inscrits.pdf"')
