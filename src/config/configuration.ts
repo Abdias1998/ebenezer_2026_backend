@@ -15,6 +15,8 @@ export default () => ({
     shopId: process.env.FEEXPAY_SHOP_ID,
     baseUrl:
       process.env.FEEXPAY_BASE_URL ?? 'https://api-v2.feexpay.me',
+    callbackUrl:
+      process.env.FEEXPAY_CALLBACK_URL,
   },
   seed: {
     superAdminEmail: process.env.SEED_SUPER_ADMIN_EMAIL,

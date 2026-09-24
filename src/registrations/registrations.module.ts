@@ -10,6 +10,7 @@ import { CountersRepository } from './repositories/counters.repository';
 import { RegistrationsRepository } from './repositories/registrations.repository';
 import { RegistrationsService } from './registrations.service';
 import { RegistrationsController } from './registrations.controller';
+import { FeexpayCallbackController } from './feexpay-callback.controller';
 
 @Module({
   imports: [
@@ -22,7 +23,7 @@ import { RegistrationsController } from './registrations.controller';
     QrcodeModule,
     PaymentsModule,
   ],
-  controllers: [RegistrationsController],
+  controllers: [RegistrationsController, FeexpayCallbackController],
   providers: [RegistrationsRepository, CountersRepository, RegistrationsService],
   exports: [RegistrationsService, RegistrationsRepository],
 })

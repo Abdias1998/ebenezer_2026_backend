@@ -28,4 +28,13 @@ export class RegistrationsRepository extends BaseRepository<RegistrationDocument
   ): Promise<RegistrationDocument | null> {
     return this.findOne({ paymentRef });
   }
+
+  async findByPaymentRefCaseInsensitive(
+    paymentRef: string,
+  ): Promise<RegistrationDocument | null> {
+    const escaped = paymentRef.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return this.findOne({
+      paymentRef: { $regex: new RegExp(`^${escaped}$`, 'i') },
+    });
+  }
 }

@@ -12,6 +12,7 @@ export const envValidationSchema = Joi.object({
   FEEXPAY_API_KEY: Joi.string().optional(),
   FEEXPAY_SHOP_ID: Joi.string().optional(),
   FEEXPAY_BASE_URL: Joi.string().uri().optional(),
+  FEEXPAY_CALLBACK_URL: Joi.string().uri().optional(),
   SEED_SUPER_ADMIN_EMAIL: Joi.string()
     .email({ tlds: { allow: false } })
     .optional(),

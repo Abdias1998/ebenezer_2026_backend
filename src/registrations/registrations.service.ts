@@ -2,13 +2,18 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { FilterQuery } from 'mongoose';
 import { EventsService } from 'src/events/events.service';
 import { ParticipantsService } from 'src/participants/participants.service';
 import { PaymentRequiredException } from 'src/payments/exceptions/payment-required.exception';
-import { PaymentsService } from 'src/payments/payments.service';
+import { PaymentIntentsRepository } from 'src/payments/repositories/payment-intents.repository';
+import {
+  normalizeFeexpayStatus,
+  PaymentsService,
+} from 'src/payments/payments.service';
 import { ParticipantGender } from 'src/participants/schemas/participant.schema';
 import { PaginatedResult } from 'src/common/interfaces/paginated-result.interface';
 import { QrcodeService } from 'src/qrcode/qrcode.service';
@@ -88,6 +93,8 @@ export interface PublicRegistrationResponse {
 
 @Injectable()
 export class RegistrationsService {
+  private readonly logger = new Logger(RegistrationsService.name);
+
   constructor(
     private readonly registrationsRepository: RegistrationsRepository,
     private readonly countersRepository: CountersRepository,
@@ -95,6 +102,7 @@ export class RegistrationsService {
     private readonly eventsService: EventsService,
     private readonly qrcodeService: QrcodeService,
     private readonly paymentsService: PaymentsService,
+    private readonly paymentIntentsRepository: PaymentIntentsRepository,
   ) {}
 
   private async verifyPayment(
@@ -195,6 +203,22 @@ export class RegistrationsService {
       dto.phone,
     );
 
+    // Coordonnées partagées (ex. un payeur inscrit plusieurs personnes avec
+    // son propre email/téléphone) : on ne réutilise le participant trouvé que
+    // s'il s'agit de la MÊME personne, sinon on crée un dossier dédié (sans
+    // quoi le 2e dossier heurte le conflit « déjà inscrit » et sa ref de
+    // paiement est perdue).
+    if (participant && dto.firstName && dto.lastName) {
+      const sameName = (a?: string, b?: string) =>
+        (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase();
+      if (
+        !sameName(participant.firstName, dto.firstName) ||
+        !sameName(participant.lastName, dto.lastName)
+      ) {
+        participant = null;
+      }
+    }
+
     const patch: Record<string, string> = {};
     if (dto.firstName) patch.firstName = dto.firstName;
     if (dto.lastName) patch.lastName = dto.lastName;
@@ -228,13 +252,15 @@ export class RegistrationsService {
     );
 
     if (dto.paymentRef) {
-      const usedPayment = await this.registrationsRepository.findByPaymentRef(
-        dto.paymentRef,
-      );
-      if (usedPayment) {
-        throw new ConflictException(
-          'Cette référence de paiement a déjà été utilisée pour une inscription.',
+      const usedPayment =
+        await this.registrationsRepository.findByPaymentRefCaseInsensitive(
+          dto.paymentRef,
         );
+      if (usedPayment) {
+        // Idempotence : la référence a déjà servi à créer un billet. On la
+        // renvoie tel quel (au lieu d'un conflit) pour permettre au front ou
+        // au webhook de rejouer sans dupliquer et sans perdre le QR code.
+        return this.buildPublicResponseForDocument(usedPayment);
       }
 
       await this.verifyPayment(dto.paymentRef, dto.paymentAmount);
@@ -312,6 +338,169 @@ export class RegistrationsService {
         location: event.location,
       },
       qrCode,
+      status: registration.status,
+      createdAt: (registration as unknown as { createdAt: Date }).createdAt,
+    };
+  }
+
+  /**
+   * Traite la notification de paiement FeexPay (webhook serveur-à-serveur).
+   *
+   * C'est la vraie solution aux inscriptions « payées mais jamais créées » :
+   * le navigateur peut être fermé avant la fin du polling, alors que FeexPay
+   * notifie le backend à chaque changement de statut. On ack rapidement (2xx)
+   * et on crée l'inscription de façon idempotente.
+   */
+  async completeFromPaymentWebhook(
+    payload: Record<string, unknown>,
+  ): Promise<{ received: boolean; registration?: PublicRegistrationResponse }> {
+    const reference = this.paymentsService.extractReferenceFromPayload(payload);
+    if (!reference) {
+      this.logger.warn('Webhook FeexPay sans référence, ignoré.');
+      return { received: true };
+    }
+
+    const status = normalizeFeexpayStatus(payload?.status);
+    if (status !== 'SUCCESSFUL') {
+      this.logger.log(
+        `Webhook FeexPay ${reference} : statut "${String(payload?.status)}", rien à faire.`,
+      );
+      return { received: true };
+    }
+
+    const already =
+      await this.registrationsRepository.findByPaymentRefCaseInsensitive(
+        reference,
+      );
+    if (already) {
+      this.logger.log(`Webhook FeexPay ${reference} : déjà inscrit, rejet idempotent.`);
+      return {
+        received: true,
+        registration: await this.buildPublicResponseForDocument(already),
+      };
+    }
+
+    const info =
+      payload?.callback_info &&
+      typeof payload.callback_info === 'object'
+        ? (payload.callback_info as Record<string, unknown>)
+        : undefined;
+
+    // Si FeexPay n'a pas renvoyé les données du formulaire, on les récupère
+    // depuis l'intention de paiement sauvegardée à l'initiation.
+    let intent: {
+      callbackInfo?: Record<string, unknown>;
+      amount?: number;
+    } | null = null;
+    if (!info?.eventId) {
+      intent = await this.paymentIntentsRepository.findByReference(reference);
+    }
+    const data = (key: string): unknown =>
+      info?.[key] ?? intent?.callbackInfo?.[key];
+
+    const eventId = data('eventId');
+    const firstName = data('firstName');
+    const lastName = data('lastName');
+    const phone = data('phone');
+
+    if (!eventId || !firstName || !lastName || !phone) {
+      this.logger.warn(
+        `Webhook FeexPay ${reference} : données d'inscription incomplètes, ignoré.`,
+      );
+      return { received: true };
+    }
+
+    try {
+      const registration = await this.completeRegistration({
+        firstName: String(firstName),
+        lastName: String(lastName),
+        phone: String(phone),
+        email: data('email')
+          ? String(data('email'))
+          : undefined,
+        city: data('city') ? String(data('city')) : undefined,
+        country: data('country') ? String(data('country')) : undefined,
+        church: data('church') ? String(data('church')) : undefined,
+        tshirtSize: data('tshirtSize')
+          ? String(data('tshirtSize'))
+          : undefined,
+        pickupLocation: data('pickupLocation')
+          ? String(data('pickupLocation'))
+          : undefined,
+        eventId: String(eventId),
+        paymentRef: reference,
+        paymentNetwork: data('paymentNetwork')
+          ? String(data('paymentNetwork'))
+          : undefined,
+        paymentPhone: data('paymentPhone')
+          ? String(data('paymentPhone'))
+          : undefined,
+        paymentAmount:
+          typeof payload?.amount === 'number'
+            ? payload.amount
+            : typeof intent?.amount === 'number'
+              ? intent.amount
+              : undefined,
+      });
+
+      this.logger.log(
+        `Webhook FeexPay ${reference} : inscription ${registration.registrationNumber} créée.`,
+      );
+      return { received: true, registration };
+    } catch (err) {
+      this.logger.error(
+        `Webhook FeexPay ${reference} : échec de l'inscription`,
+        err instanceof Error ? err.stack : err,
+      );
+      throw err;
+    }
+  }
+
+  private async buildPublicResponseForDocument(
+    registration: RegistrationDocument,
+  ): Promise<PublicRegistrationResponse> {
+    await registration.populate('participant');
+    await registration.populate('event');
+    const participant = registration.participant as unknown as ParticipantInfo & {
+      id?: string;
+    };
+    const event = registration.event as unknown as {
+      id?: string;
+      name?: string;
+      startDate?: Date;
+      endDate?: Date;
+      location?: string;
+    };
+    return {
+      id: registration.id,
+      registrationNumber: registration.registrationNumber,
+      participant: {
+        id: participant.id ?? String((registration as { participant?: unknown }).participant),
+        firstName: participant.firstName ?? '',
+        lastName: participant.lastName ?? '',
+        email: participant.email,
+        phone: participant.phone ?? '',
+        city: participant.city,
+        country: participant.country,
+        church: participant.church,
+        tshirtSize: participant.tshirtSize,
+        pickupLocation: participant.pickupLocation,
+        photo: participant.photo,
+      },
+      event: {
+        id: event.id ?? '',
+        name: event.name ?? '',
+        startDate: event.startDate ?? new Date(),
+        endDate: event.endDate ?? new Date(),
+        location: event.location,
+      },
+      qrCode: await this.qrcodeService.toImageDataUrl(
+        this.qrcodeService.buildToken(
+          registration.id,
+          registration.code,
+          this.qrInfo(participant, event.name, registration.registrationNumber),
+        ),
+      ),
       status: registration.status,
       createdAt: (registration as unknown as { createdAt: Date }).createdAt,
     };

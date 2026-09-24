@@ -4,6 +4,7 @@ import {
   InitiatePaymentDto,
   PayinNetwork,
 } from './dto/initiate-payment.dto';
+import { PaymentIntentsRepository } from './repositories/payment-intents.repository';
 
 export type FeexPayStatus = 'PENDING' | 'SUCCESSFUL' | 'FAILED';
 
@@ -97,13 +98,18 @@ export class PaymentsService {
   private readonly baseUrl: string;
   private readonly apiKey: string;
   private readonly shopId: string;
+  private readonly callbackUrl?: string;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly paymentIntentsRepository: PaymentIntentsRepository,
+  ) {
     this.baseUrl =
       this.configService.get<string>('feexpay.baseUrl') ??
       'https://api-v2.feexpay.me';
     this.apiKey = this.configService.get<string>('feexpay.apiKey') ?? '';
     this.shopId = this.configService.get<string>('feexpay.shopId') ?? '';
+    this.callbackUrl = this.configService.get<string>('feexpay.callbackUrl');
   }
 
   private ensureConfigured(): void {
@@ -173,6 +179,7 @@ export class PaymentsService {
     this.ensureConfigured();
 
     const endpoint = NETWORK_ENDPOINTS[dto.network];
+    const callbackUrl = dto.callbackUrl ?? this.callbackUrl;
     const json = await this.request(
       `/api/transactions/public/requesttopay/${endpoint}`,
       {
@@ -184,6 +191,7 @@ export class PaymentsService {
           first_name: dto.firstName,
           last_name: dto.lastName,
           callback_info: dto.callbackInfo,
+          ...(callbackUrl ? { callback_url: callbackUrl } : {}),
         }),
       },
     );
@@ -201,6 +209,24 @@ export class PaymentsService {
         'Impossible de lancer le paiement. Réessayez dans un instant.',
       );
     }
+
+    // On conserve l'intention côté serveur : le webhook FeexPay pourra ainsi
+    // recréer l'inscription même si le payeur quitte la page avant la
+    // confirmation.
+    await this.paymentIntentsRepository
+      .create({
+        reference,
+        network: dto.network,
+        amount: dto.amount,
+        phoneNumber: dto.phoneNumber,
+        callbackInfo: dto.callbackInfo,
+      })
+      .catch((err) => {
+        this.logger.error(
+          `Impossible de sauvegarder l'intention de paiement ${reference}`,
+          err instanceof Error ? err.stack : err,
+        );
+      });
 
     return {
       reference,
@@ -234,5 +260,21 @@ export class PaymentsService {
       phoneNumber: json?.phoneNumber as string | undefined,
       reason: (json?.reason as string) ?? (json?.responsemsg as string) ?? undefined,
     };
+  }
+
+  /**
+   * Récupère la référence de transaction FeexPay depuis un callback/webhook.
+   * FeexPay peut la fournir dans le corps (`reference`, `transaction_id`,
+   * `transref`, `order_id`) ou en paramètre d'URL (`ref`).
+   */
+  extractReferenceFromPayload(payload: Record<string, unknown>): string | undefined {
+    const ref =
+      payload?.reference ??
+      payload?.transaction_id ??
+      payload?.transref ??
+      payload?.order_id ??
+      payload?.trx_id ??
+      payload?.ref;
+    return typeof ref === 'string' && ref.trim() ? ref.trim() : undefined;
   }
 }

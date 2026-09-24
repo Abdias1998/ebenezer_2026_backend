@@ -77,4 +77,12 @@ export class InitiatePaymentDto {
   @IsOptional()
   @IsObject()
   callbackInfo?: Record<string, unknown>;
+
+  @ApiPropertyOptional({
+    description:
+      "URL de notification FeexPay (webhook). Si absente, la variable d'environnement FEEXPAY_CALLBACK_URL est utilisée.",
+  })
+  @IsOptional()
+  @IsString()
+  callbackUrl?: string;
 }
