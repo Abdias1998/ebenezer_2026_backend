@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsInt,
@@ -57,6 +58,18 @@ export class CreateEventDto {
   @IsInt()
   @Min(0)
   totalSlots?: number;
+
+  @ApiPropertyOptional({ description: 'Inscription gratuite (sans paiement)' })
+  @IsOptional()
+  @IsBoolean()
+  isFree?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Un seul pointage par inscription pour tout l\'événement',
+  })
+  @IsOptional()
+  @IsBoolean()
+  singleCheckIn?: boolean;
 
   @ApiPropertyOptional({ enum: EventStatus })
   @IsOptional()

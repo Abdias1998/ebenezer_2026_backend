@@ -8,7 +8,7 @@ import { Permissions } from 'src/common/decorators/permissions.decorator';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { AttendanceService } from './attendance.service';
-import { ScanDto } from './dto/scan.dto';
+import { ManualCheckInDto, ScanDto } from './dto/scan.dto';
 
 @ApiTags('attendance')
 @ApiBearerAuth()
@@ -21,6 +21,20 @@ export class AttendanceController {
   @Permissions(PERMISSIONS.ATTENDANCE.CREATE)
   scan(@Body() dto: ScanDto, @CurrentUser() user: AuthenticatedUser) {
     return this.attendanceService.scan(dto, user.userId);
+  }
+
+  @Post('registrations/:registrationId/check-in')
+  @Permissions(PERMISSIONS.ATTENDANCE.CREATE)
+  checkIn(
+    @Param('registrationId') registrationId: string,
+    @Body() dto: ManualCheckInDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.attendanceService.checkInById(
+      registrationId,
+      user.userId,
+      dto.eventId,
+    );
   }
 
   @Get('participant/:participantId')

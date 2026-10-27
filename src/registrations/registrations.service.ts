@@ -45,11 +45,18 @@ const PAYMENT_NETWORK_LABELS: Record<string, string> = {
 interface ParticipantInfo {
   firstName?: string;
   lastName?: string;
+  gender?: string;
+  dob?: Date;
   email?: string;
   phone?: string;
   city?: string;
   country?: string;
   church?: string;
+  title?: string;
+  profession?: string;
+  company?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
   tshirtSize?: string;
   pickupLocation?: string;
   photo?: string;
@@ -71,11 +78,18 @@ export interface PublicRegistrationResponse {
     id: string;
     firstName: string;
     lastName: string;
+    gender?: string;
+    dob?: Date;
     email?: string;
     phone: string;
     city?: string;
     country?: string;
     church?: string;
+    title?: string;
+    profession?: string;
+    company?: string;
+    emergencyContactName?: string;
+    emergencyContactPhone?: string;
     tshirtSize?: string;
     pickupLocation?: string;
     photo?: string;
@@ -187,6 +201,12 @@ export class RegistrationsService {
       city?: string;
       country?: string;
       church?: string;
+      title?: string;
+      profession?: string;
+      company?: string;
+      dob?: string;
+      emergencyContactName?: string;
+      emergencyContactPhone?: string;
       tshirtSize?: string;
       pickupLocation?: string;
       eventId: string;
@@ -230,6 +250,16 @@ export class RegistrationsService {
     if (dto.city) patch.city = dto.city;
     if (dto.country) patch.country = dto.country;
     if (dto.church) patch.church = dto.church;
+    if (dto.title) patch.title = dto.title;
+    if (dto.profession) patch.profession = dto.profession;
+    if (dto.company) patch.company = dto.company;
+    if (dto.dob) patch.dob = dto.dob;
+    if (dto.emergencyContactName) {
+      patch.emergencyContactName = dto.emergencyContactName;
+    }
+    if (dto.emergencyContactPhone) {
+      patch.emergencyContactPhone = dto.emergencyContactPhone;
+    }
     if (dto.tshirtSize) patch.tshirtSize = dto.tshirtSize;
     if (dto.pickupLocation) patch.pickupLocation = dto.pickupLocation;
 
@@ -282,6 +312,10 @@ export class RegistrationsService {
         if (!registration) {
           throw new NotFoundException('Registration not found');
         }
+      } else if (event.isFree && !dto.paymentRef) {
+        // Événement gratuit : une nouvelle soumission par la même personne
+        // renvoie son billet existant (QR perdu, page rechargée...).
+        return this.buildPublicResponseForDocument(registration);
       } else {
         throw new ConflictException(
           'Vous êtes déjà inscrit(e) à cet événement.',
@@ -306,9 +340,10 @@ export class RegistrationsService {
         paymentNetwork: dto.paymentNetwork,
         paymentPhone: dto.paymentPhone,
         paymentAmount: dto.paymentAmount,
-        status: dto.paymentRef
-          ? RegistrationStatus.CONFIRMED
-          : RegistrationStatus.PENDING,
+        status:
+          dto.paymentRef || event.isFree
+            ? RegistrationStatus.CONFIRMED
+            : RegistrationStatus.PENDING,
       });
     }
 
@@ -326,11 +361,18 @@ export class RegistrationsService {
         id: participant.id,
         firstName: participant.firstName,
         lastName: participant.lastName,
+        gender: participant.gender,
+        dob: participant.dob,
         email: participant.email,
         phone: participant.phone,
         city: participant.city,
         country: participant.country,
         church: participant.church,
+        title: participant.title,
+        profession: participant.profession,
+        company: participant.company,
+        emergencyContactName: participant.emergencyContactName,
+        emergencyContactPhone: participant.emergencyContactPhone,
         tshirtSize: participant.tshirtSize,
         pickupLocation: participant.pickupLocation,
         photo: participant.photo,
@@ -483,11 +525,18 @@ export class RegistrationsService {
         id: participant.id ?? String((registration as { participant?: unknown }).participant),
         firstName: participant.firstName ?? '',
         lastName: participant.lastName ?? '',
+        gender: participant.gender,
+        dob: participant.dob,
         email: participant.email,
         phone: participant.phone ?? '',
         city: participant.city,
         country: participant.country,
         church: participant.church,
+        title: participant.title,
+        profession: participant.profession,
+        company: participant.company,
+        emergencyContactName: participant.emergencyContactName,
+        emergencyContactPhone: participant.emergencyContactPhone,
         tshirtSize: participant.tshirtSize,
         pickupLocation: participant.pickupLocation,
         photo: participant.photo,
@@ -540,6 +589,18 @@ export class RegistrationsService {
     }
     if (query.church) {
       participantFilter.church = query.church;
+    }
+    if (query.country) {
+      participantFilter.country = query.country;
+    }
+    if (query.gender) {
+      participantFilter.gender = query.gender;
+    }
+    if (query.title) {
+      participantFilter.title = query.title;
+    }
+    if (query.profession) {
+      participantFilter.profession = query.profession;
     }
     if (query.search) {
       const search = query.search.trim();
@@ -632,6 +693,10 @@ export class RegistrationsService {
     byChurch: { value: string; count: number }[];
     byPaymentNetwork: { value: string; count: number }[];
     byStatus: { value: string; count: number }[];
+    byCountry: { value: string; count: number }[];
+    byGender: { value: string; count: number }[];
+    byTitle: { value: string; count: number }[];
+    byProfession: { value: string; count: number }[];
   }> {
     const filter: FilterQuery<Registration> = {};
     if (query.event) {

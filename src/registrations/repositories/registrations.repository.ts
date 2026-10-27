@@ -6,6 +6,50 @@ import { PaginationOptions } from 'src/common/repositories/base.repository';
 import { PaginatedResult } from 'src/common/interfaces/paginated-result.interface';
 import { Registration, RegistrationDocument } from '../schemas/registration.schema';
 
+/**
+ * Les références `participant` / `event` sont stockées en chaînes (le schéma
+ * déclare `Types.ObjectId`, que Mongoose ne caste pas) : les agrégations
+ * doivent accepter les deux formes, sans quoi les `$lookup` ne trouvent rien.
+ */
+function idMatch(id: string): { $in: (string | Types.ObjectId)[] } {
+  return Types.ObjectId.isValid(id)
+    ? { $in: [id, new Types.ObjectId(id)] }
+    : { $in: [id] };
+}
+
+function lookupById(
+  from: string,
+  localField: string,
+  as: string,
+): PipelineStage.Lookup {
+  return {
+    $lookup: {
+      from,
+      let: { ref: `$${localField}` },
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $eq: [
+                '$_id',
+                {
+                  $convert: {
+                    input: '$$ref',
+                    to: 'objectId',
+                    onError: null,
+                    onNull: null,
+                  },
+                },
+              ],
+            },
+          },
+        },
+      ],
+      as,
+    },
+  };
+}
+
 @Injectable()
 export class RegistrationsRepository extends BaseRepository<RegistrationDocument> {
   constructor(
@@ -60,7 +104,7 @@ export class RegistrationsRepository extends BaseRepository<RegistrationDocument
       ...(registrationFilter as FilterQuery<Registration>),
     };
     if (match.event && typeof match.event === 'string') {
-      match.event = new Types.ObjectId(match.event);
+      match.event = idMatch(match.event);
     }
 
     const participantMatch: Record<string, unknown> = {};
@@ -78,24 +122,10 @@ export class RegistrationsRepository extends BaseRepository<RegistrationDocument
 
     const pipeline: PipelineStage[] = [
       { $match: match },
-      {
-        $lookup: {
-          from: 'participants',
-          localField: 'participant',
-          foreignField: '_id',
-          as: '__p',
-        },
-      },
+      lookupById('participants', 'participant', '__p'),
       { $set: { participantDoc: { $arrayElemAt: ['$__p', 0] } } },
       { $unset: '__p' },
-      {
-        $lookup: {
-          from: 'events',
-          localField: 'event',
-          foreignField: '_id',
-          as: '__e',
-        },
-      },
+      lookupById('events', 'event', '__e'),
       { $set: { eventDoc: { $arrayElemAt: ['$__e', 0] } } },
       { $unset: '__e' },
     ];
@@ -111,17 +141,10 @@ export class RegistrationsRepository extends BaseRepository<RegistrationDocument
     );
 
     const items = await this.model.aggregate(pipeline).exec();
-    const [countRow] = await this.model
+    const countRows = await this.model
       .aggregate([
         { $match: match },
-        {
-          $lookup: {
-            from: 'participants',
-            localField: 'participant',
-            foreignField: '_id',
-            as: '__p',
-          },
-        },
+        lookupById('participants', 'participant', '__p'),
         { $set: { participantDoc: { $arrayElemAt: ['$__p', 0] } } },
         { $unset: '__p' },
         ...(Object.keys(participantMatch).length
@@ -130,7 +153,7 @@ export class RegistrationsRepository extends BaseRepository<RegistrationDocument
         { $count: 'total' },
       ])
       .exec();
-    const total = countRow?.[0]?.total ?? 0;
+    const total = countRows?.[0]?.total ?? 0;
 
     return {
       items,
@@ -152,25 +175,22 @@ export class RegistrationsRepository extends BaseRepository<RegistrationDocument
     byChurch: { value: string; count: number }[];
     byPaymentNetwork: { value: string; count: number }[];
     byStatus: { value: string; count: number }[];
+    byCountry: { value: string; count: number }[];
+    byGender: { value: string; count: number }[];
+    byTitle: { value: string; count: number }[];
+    byProfession: { value: string; count: number }[];
   }> {
     const match: PipelineStage.Match['$match'] = {
       ...(registrationFilter as FilterQuery<Registration>),
     };
     if (match.event && typeof match.event === 'string') {
-      match.event = new Types.ObjectId(match.event);
+      match.event = idMatch(match.event);
     }
 
     const [result] = await this.model
       .aggregate([
         { $match: match },
-        {
-          $lookup: {
-            from: 'participants',
-            localField: 'participant',
-            foreignField: '_id',
-            as: '__p',
-          },
-        },
+        lookupById('participants', 'participant', '__p'),
         { $set: { participantDoc: { $arrayElemAt: ['$__p', 0] } } },
         { $unset: '__p' },
         {
@@ -199,6 +219,23 @@ export class RegistrationsRepository extends BaseRepository<RegistrationDocument
             byStatus: [
               { $group: { _id: '$status', count: { $sum: 1 } } },
             ],
+            byCountry: [
+              { $group: { _id: '$participantDoc.country', count: { $sum: 1 } } },
+            ],
+            byGender: [
+              { $group: { _id: '$participantDoc.gender', count: { $sum: 1 } } },
+            ],
+            byTitle: [
+              { $group: { _id: '$participantDoc.title', count: { $sum: 1 } } },
+            ],
+            byProfession: [
+              {
+                $group: {
+                  _id: '$participantDoc.profession',
+                  count: { $sum: 1 },
+                },
+              },
+            ],
           },
         },
       ])
@@ -218,6 +255,10 @@ export class RegistrationsRepository extends BaseRepository<RegistrationDocument
       byChurch: toMap(result?.byChurch ?? []),
       byPaymentNetwork: toMap(result?.byPaymentNetwork ?? []),
       byStatus: toMap(result?.byStatus ?? []),
+      byCountry: toMap(result?.byCountry ?? []),
+      byGender: toMap(result?.byGender ?? []),
+      byTitle: toMap(result?.byTitle ?? []),
+      byProfession: toMap(result?.byProfession ?? []),
     };
   }
 }

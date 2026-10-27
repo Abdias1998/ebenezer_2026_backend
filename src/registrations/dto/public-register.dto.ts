@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsDateString,
   IsEmail,
   IsIn,
   IsMongoId,
@@ -50,6 +51,36 @@ export class PublicRegisterDto {
   @IsOptional()
   @IsString()
   church?: string;
+
+  @ApiPropertyOptional({ description: 'Titre ministériel (séminaire)' })
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @ApiPropertyOptional({ description: "Secteur d'activité (conférence)" })
+  @IsOptional()
+  @IsString()
+  profession?: string;
+
+  @ApiPropertyOptional({ description: 'Entreprise / organisation (conférence)' })
+  @IsOptional()
+  @IsString()
+  company?: string;
+
+  @ApiPropertyOptional({ description: 'Date de naissance (AAAA-MM-JJ)' })
+  @IsOptional()
+  @IsDateString()
+  dob?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  emergencyContactName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  emergencyContactPhone?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

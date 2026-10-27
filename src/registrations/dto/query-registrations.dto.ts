@@ -40,6 +40,26 @@ export class QueryRegistrationsDto extends PaginationQueryDto {
   @IsString()
   city?: string;
 
+  @ApiPropertyOptional({ description: 'Pays (ex : Togo)' })
+  @IsOptional()
+  @IsString()
+  country?: string;
+
+  @ApiPropertyOptional({ description: 'Sexe (M ou F)' })
+  @IsOptional()
+  @IsString()
+  gender?: string;
+
+  @ApiPropertyOptional({ description: 'Titre ministériel (ex : Pasteur)' })
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @ApiPropertyOptional({ description: "Secteur d'activité" })
+  @IsOptional()
+  @IsString()
+  profession?: string;
+
   @ApiPropertyOptional({ description: 'Église / organisation' })
   @IsOptional()
   @IsString()

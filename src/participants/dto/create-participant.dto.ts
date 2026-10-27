@@ -62,6 +62,31 @@ export class CreateParticipantDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  title?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  profession?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  company?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  emergencyContactName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  emergencyContactPhone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   tshirtSize?: string;
 
   @ApiPropertyOptional()

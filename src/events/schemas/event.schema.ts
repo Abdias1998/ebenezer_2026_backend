@@ -43,6 +43,17 @@ export class Event {
   @Prop({ default: 0 })
   totalSlots: number;
 
+  /** Inscription gratuite : le billet est confirmé sans paiement. */
+  @Prop({ default: false })
+  isFree: boolean;
+
+  /**
+   * Un seul pointage par inscription sur toute la durée de l'événement
+   * (ex. camp de nuit qui passe minuit), au lieu d'un pointage par jour.
+   */
+  @Prop({ default: false })
+  singleCheckIn: boolean;
+
   @Prop({ type: String, enum: EventStatus, default: EventStatus.DRAFT })
   status: EventStatus;
 }

@@ -61,6 +61,24 @@ export class Participant {
   @Prop({ trim: true })
   church?: string;
 
+  /** Titre ministériel (Pasteur, Apôtre, Évêque...) pour le séminaire. */
+  @Prop({ trim: true })
+  title?: string;
+
+  /** Secteur d'activité (conférence des professionnels). */
+  @Prop({ trim: true })
+  profession?: string;
+
+  /** Entreprise / organisation (conférence des professionnels). */
+  @Prop({ trim: true })
+  company?: string;
+
+  @Prop({ trim: true })
+  emergencyContactName?: string;
+
+  @Prop({ trim: true })
+  emergencyContactPhone?: string;
+
   @Prop({ trim: true })
   tshirtSize?: string;
 

@@ -42,6 +42,10 @@ export class Registration {
 
   @Prop({ type: Number })
   paymentAmount?: number;
+
+  /** Heure du premier pointage (arrivée). */
+  @Prop({ type: Date })
+  checkedInAt?: Date;
 }
 
 export const RegistrationSchema = SchemaFactory.createForClass(Registration);
