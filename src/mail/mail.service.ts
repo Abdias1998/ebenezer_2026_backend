@@ -24,9 +24,9 @@ const escapeHtml = (value: string) =>
     .replace(/"/g, '&quot;');
 
 /**
- * Envoi d'e-mails via SMTP. Si SMTP_HOST n'est pas configuré, les envois
- * sont ignorés (journalisés) : l'inscription ne doit jamais échouer à cause
- * de l'e-mail.
+ * Envoi d'e-mails via SMTP. Si MAIL_ENABLED n'est pas à true ou si SMTP_HOST
+ * n'est pas configuré, les envois sont ignorés (journalisés) : l'inscription
+ * ne doit jamais échouer à cause de l'e-mail.
  */
 @Injectable()
 export class MailService {
@@ -40,19 +40,21 @@ export class MailService {
       configService.get<string>('mail.from') ??
       configService.get<string>('mail.user') ??
       'no-reply@localhost';
-    this.transporter = host
-      ? nodemailer.createTransport({
-          host,
-          port: configService.get<number>('mail.port'),
-          secure: configService.get<boolean>('mail.secure'),
-          auth: configService.get<string>('mail.user')
-            ? {
-                user: configService.get<string>('mail.user'),
-                pass: configService.get<string>('mail.pass'),
-              }
-            : undefined,
-        })
-      : null;
+    const enabled = configService.get<boolean>('mail.enabled');
+    this.transporter =
+      enabled && host
+        ? nodemailer.createTransport({
+            host,
+            port: configService.get<number>('mail.port'),
+            secure: configService.get<boolean>('mail.secure'),
+            auth: configService.get<string>('mail.user')
+              ? {
+                  user: configService.get<string>('mail.user'),
+                  pass: configService.get<string>('mail.pass'),
+                }
+              : undefined,
+          })
+        : null;
   }
 
   get enabled(): boolean {
@@ -63,7 +65,7 @@ export class MailService {
   async sendTicket(mail: TicketMail): Promise<void> {
     if (!this.transporter) {
       this.logger.debug(
-        `SMTP non configuré : billet ${mail.registrationNumber} non envoyé par e-mail.`,
+        `E-mails désactivés : billet ${mail.registrationNumber} non envoyé par e-mail.`,
       );
       return;
     }
@@ -94,7 +96,9 @@ export class MailService {
         '',
         `Ton inscription à « ${mail.eventName} » est confirmée.`,
         `Numéro d'inscription : ${mail.registrationNumber}`,
-        practical ? `Infos : ${[date, mail.eventLocation].filter(Boolean).join(' · ')}` : '',
+        practical
+          ? `Infos : ${[date, mail.eventLocation].filter(Boolean).join(' · ')}`
+          : '',
         '',
         "Ton QR code est joint à cet e-mail : présente-le à l'arrivée, il sera scanné pour enregistrer ta présence.",
         '',

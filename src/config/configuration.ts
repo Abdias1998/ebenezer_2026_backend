@@ -19,6 +19,7 @@ export default () => ({
       process.env.FEEXPAY_CALLBACK_URL,
   },
   mail: {
+    enabled: process.env.MAIL_ENABLED === 'true',
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT ?? '587', 10),
     secure: (process.env.SMTP_SECURE ?? 'false') === 'true',

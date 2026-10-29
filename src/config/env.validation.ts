@@ -13,6 +13,7 @@ export const envValidationSchema = Joi.object({
   FEEXPAY_SHOP_ID: Joi.string().optional(),
   FEEXPAY_BASE_URL: Joi.string().uri().optional(),
   FEEXPAY_CALLBACK_URL: Joi.string().uri().optional(),
+  MAIL_ENABLED: Joi.string().valid('true', 'false').optional(),
   SMTP_HOST: Joi.string().optional(),
   SMTP_PORT: Joi.number().optional(),
   SMTP_SECURE: Joi.string().valid('true', 'false').optional(),
