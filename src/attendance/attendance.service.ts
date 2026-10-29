@@ -15,8 +15,15 @@ import { ScanDto } from './dto/scan.dto';
 import { AttendanceRepository } from './repositories/attendance.repository';
 import { AttendanceDocument } from './schemas/attendance.schema';
 
+/**
+ * Date de la séance (AAAA-MM-JJ). La journée est comptée de 05h00 à 05h00,
+ * heure du Bénin (UTC+1) : un scan à 01h00 dans la nuit de vendredi à samedi
+ * reste rattaché à la séance du vendredi.
+ */
+const SESSION_DAY_SHIFT_MS = 5 * 60 * 60 * 1000;
+
 function todayString(): string {
-  return new Date().toISOString().slice(0, 10);
+  return new Date(Date.now() - SESSION_DAY_SHIFT_MS).toISOString().slice(0, 10);
 }
 
 /**

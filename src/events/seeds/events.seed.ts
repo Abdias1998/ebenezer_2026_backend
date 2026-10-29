@@ -54,10 +54,10 @@ export const CAMP_EVENT = {
   theme: 'Chaque vendredi dans Sa présence',
   description:
     "Chaque vendredi, une nuit de prière, d'adoration et de communion pour la jeunesse.",
-  // Tous les vendredis ; dates = première séance, vendredi 30 oct. 19h00 → samedi 06h00 (UTC+1).
-  startDate: new Date('2026-10-30T18:00:00Z'),
-  endDate: new Date('2026-10-31T05:00:00Z'),
-  scheduleLabel: 'Tous les vendredis, de 19h00 à 06h00',
+  // Tous les vendredis ; dates = première séance, vendredi 30 oct. 23h00 → samedi 02h00 (UTC+1).
+  startDate: new Date('2026-10-30T22:00:00Z'),
+  endDate: new Date('2026-10-31T01:00:00Z'),
+  scheduleLabel: 'Tous les vendredis, de 23h00 à 02h00',
   location: 'Centre La Grâce Parle, Jéricho',
   totalSlots: 1000,
   status: EventStatus.PUBLISHED,
