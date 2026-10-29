@@ -4,6 +4,10 @@ import { EventsModule } from 'src/events/events.module';
 import { ParticipantsModule } from 'src/participants/participants.module';
 import { QrcodeModule } from 'src/qrcode/qrcode.module';
 import { PaymentsModule } from 'src/payments/payments.module';
+import {
+  Attendance,
+  AttendanceSchema,
+} from 'src/attendance/schemas/attendance.schema';
 import { Counter, CounterSchema } from './schemas/counter.schema';
 import { Registration, RegistrationSchema } from './schemas/registration.schema';
 import { CountersRepository } from './repositories/counters.repository';
@@ -17,6 +21,7 @@ import { FeexpayCallbackController } from './feexpay-callback.controller';
     MongooseModule.forFeature([
       { name: Registration.name, schema: RegistrationSchema },
       { name: Counter.name, schema: CounterSchema },
+      { name: Attendance.name, schema: AttendanceSchema },
     ]),
     ParticipantsModule,
     EventsModule,

@@ -4,6 +4,7 @@ import {
   IsMongoId,
   IsOptional,
   IsString,
+  Matches,
 } from 'class-validator';
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
 
@@ -78,6 +79,22 @@ export class QueryRegistrationsDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   status?: string;
+
+  @ApiPropertyOptional({
+    description:
+      "Séance (AAAA-MM-JJ) : ne garder que les inscrits pointés ce jour-là (nécessite 'event')",
+  })
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  presentOn?: string;
+
+  @ApiPropertyOptional({
+    description:
+      "Séance (AAAA-MM-JJ) : ne garder que les inscrits non pointés ce jour-là (nécessite 'event')",
+  })
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  absentOn?: string;
 
   @ApiPropertyOptional({
     description: 'Recherche libre sur le nom, prénom, email ou téléphone',

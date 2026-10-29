@@ -31,6 +31,13 @@ export class Event {
   @Prop({ trim: true })
   location?: string;
 
+  /**
+   * Rythme d'un événement récurrent (ex. « Tous les vendredis »), affiché
+   * à la place de la date de début dans l'e-mail du billet.
+   */
+  @Prop({ trim: true })
+  scheduleLabel?: string;
+
   @Prop()
   logo?: string;
 

@@ -79,6 +79,30 @@ export class Participant {
   @Prop({ trim: true })
   emergencyContactPhone?: string;
 
+  /** Adresse de résidence (quartier, rue...). */
+  @Prop({ trim: true })
+  address?: string;
+
+  /** Parent ou tuteur légal (participants mineurs). */
+  @Prop({ trim: true })
+  guardianName?: string;
+
+  @Prop({ trim: true })
+  guardianRelation?: string;
+
+  @Prop({ trim: true })
+  guardianPhone?: string;
+
+  /** Horodatage des acceptations données lors de l'inscription. */
+  @Prop()
+  rulesAcceptedAt?: Date;
+
+  @Prop()
+  parentalConsentAt?: Date;
+
+  @Prop()
+  dataConsentAt?: Date;
+
   @Prop({ trim: true })
   tshirtSize?: string;
 

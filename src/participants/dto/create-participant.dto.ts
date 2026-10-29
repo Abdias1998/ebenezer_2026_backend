@@ -77,6 +77,41 @@ export class CreateParticipantDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  address?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  guardianName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  guardianRelation?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  guardianPhone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  rulesAcceptedAt?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  parentalConsentAt?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  dataConsentAt?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   emergencyContactName?: string;
 
   @ApiPropertyOptional()

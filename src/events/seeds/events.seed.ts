@@ -22,7 +22,7 @@ export const SEMINAIRE_EVENT = {
   name: 'Séminaire des Pasteurs',
   theme: 'Marcher dans les réalités du Royaume (Marc 4:11)',
   description:
-    "Mission au Bénin avec le Prophète Samuel Dalum : intercession prophétique (17-18 nov.), séminaires sur le leadership (19-20 nov.) et conférences de réveil chaque soir. Orateurs : Pr Paddy Blessed Musoke, Pr Dieudonné Nduwimana, Ev. Danny Kadigiri. Coordinateur : Papa John Migan.",
+    'Mission au Bénin avec le Prophète Samuel Dalum : intercession prophétique (17-18 nov.), séminaires sur le leadership (19-20 nov.) et conférences de réveil chaque soir. Orateurs : Pr Paddy Blessed Musoke, Pr Dieudonné Nduwimana, Ev. Danny Kadigiri. Coordinateur : Papa John Migan.',
   // Heure du Bénin (UTC+1) : du 17 nov. 09h00 au 20 nov. ~21h00.
   startDate: new Date('2026-11-17T08:00:00Z'),
   endDate: new Date('2026-11-20T20:00:00Z'),
@@ -50,18 +50,21 @@ export const CONFERENCE_EVENT = {
 };
 
 export const CAMP_EVENT = {
-  name: 'Camp de Nuit des Jeunes',
-  theme: 'Une nuit dans Sa présence',
+  name: 'Camp La Sagesse de Bâtir',
+  theme: 'Chaque vendredi dans Sa présence',
   description:
-    "Une nuit entière de prière, d'adoration et de communion pour la jeunesse.",
-  startDate: new Date('2026-12-18T19:00:00Z'),
-  endDate: new Date('2026-12-19T06:00:00Z'),
-  location: 'À confirmer',
+    "Chaque vendredi, une nuit de prière, d'adoration et de communion pour la jeunesse.",
+  // Tous les vendredis ; dates = première séance, vendredi 30 oct. 19h00 → samedi 06h00 (UTC+1).
+  startDate: new Date('2026-10-30T18:00:00Z'),
+  endDate: new Date('2026-10-31T05:00:00Z'),
+  scheduleLabel: 'Tous les vendredis, de 19h00 à 06h00',
+  location: 'Centre La Grâce Parle, Jéricho',
   totalSlots: 1000,
   status: EventStatus.PUBLISHED,
   registrationPrefix: 'CAMP',
   isFree: true,
-  singleCheckIn: true,
+  // Plusieurs séances : un pointage par jour, pour savoir qui était là à chacune.
+  singleCheckIn: false,
 };
 
 const EVENTS = [JDJ_EVENT, SEMINAIRE_EVENT, CONFERENCE_EVENT, CAMP_EVENT];
@@ -73,7 +76,13 @@ async function bootstrap(): Promise<void> {
   const eventsRepository = app.get(EventsRepository);
 
   for (const event of EVENTS) {
-    const existing = await eventsRepository.findOne({ name: event.name });
+    // Le préfixe permet de retrouver un événement renommé.
+    const existing = await eventsRepository.findOne({
+      $or: [
+        { name: event.name },
+        { registrationPrefix: event.registrationPrefix },
+      ],
+    });
     if (existing) {
       await eventsRepository.updateById(existing.id, event);
       logger.log(`Updated event "${event.name}" (id: ${existing.id})`);

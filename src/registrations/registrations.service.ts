@@ -5,7 +5,12 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { FilterQuery } from 'mongoose';
+import { InjectModel } from '@nestjs/mongoose';
+import { FilterQuery, Model, Types } from 'mongoose';
+import {
+  Attendance,
+  AttendanceDocument,
+} from 'src/attendance/schemas/attendance.schema';
 import { EventsService } from 'src/events/events.service';
 import { ParticipantsService } from 'src/participants/participants.service';
 import { PaymentRequiredException } from 'src/payments/exceptions/payment-required.exception';
@@ -17,6 +22,7 @@ import {
 import { ParticipantGender } from 'src/participants/schemas/participant.schema';
 import { PaginatedResult } from 'src/common/interfaces/paginated-result.interface';
 import { QrcodeService } from 'src/qrcode/qrcode.service';
+import { MailService } from 'src/mail/mail.service';
 import { AdminRattrapageDto } from './dto/admin-rattrapage.dto';
 import { CreateRegistrationDto } from './dto/create-registration.dto';
 import { PublicRegisterDto } from './dto/public-register.dto';
@@ -57,6 +63,10 @@ interface ParticipantInfo {
   company?: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
+  address?: string;
+  guardianName?: string;
+  guardianRelation?: string;
+  guardianPhone?: string;
   tshirtSize?: string;
   pickupLocation?: string;
   photo?: string;
@@ -64,6 +74,15 @@ interface ParticipantInfo {
 
 interface EventInfo {
   name?: string;
+}
+
+/** Vrai si la personne née le `dob` a moins de 18 ans à la date `at`. */
+function isMinorAt(dob: string, at: Date = new Date()): boolean {
+  const birth = new Date(dob);
+  if (Number.isNaN(birth.getTime())) return false;
+  const adultFrom = new Date(birth);
+  adultFrom.setFullYear(birth.getFullYear() + 18);
+  return adultFrom > at;
 }
 
 const GENDER_MAP: Record<'male' | 'female', ParticipantGender> = {
@@ -90,6 +109,10 @@ export interface PublicRegistrationResponse {
     company?: string;
     emergencyContactName?: string;
     emergencyContactPhone?: string;
+    address?: string;
+    guardianName?: string;
+    guardianRelation?: string;
+    guardianPhone?: string;
     tshirtSize?: string;
     pickupLocation?: string;
     photo?: string;
@@ -118,7 +141,51 @@ export class RegistrationsService {
     private readonly qrcodeService: QrcodeService,
     private readonly paymentsService: PaymentsService,
     private readonly paymentIntentsRepository: PaymentIntentsRepository,
+    private readonly mailService: MailService,
+    @InjectModel(Attendance.name)
+    private readonly attendanceModel: Model<AttendanceDocument>,
   ) {}
+
+  /**
+   * Filtre « présent / absent à la séance du jour J » : traduit en liste
+   * d'identifiants d'inscriptions pointées ce jour-là.
+   */
+  private async applySessionFilter(
+    filter: FilterQuery<Registration>,
+    query: QueryRegistrationsDto,
+  ): Promise<void> {
+    const date = query.presentOn ?? query.absentOn;
+    if (!date || !query.event) return;
+    const ids = await this.attendanceModel
+      .distinct('registration', { event: query.event, date })
+      .exec();
+    filter._id = query.presentOn ? { $in: ids } : { $nin: ids };
+  }
+
+  /** Dates des séances où chaque inscription de la liste a été pointée. */
+  private async attendanceDatesByRegistration(
+    registrationIds: string[],
+  ): Promise<Map<string, string[]>> {
+    const map = new Map<string, string[]>();
+    if (registrationIds.length === 0) return map;
+    const rows = await this.attendanceModel
+      .find(
+        {
+          registration: {
+            $in: registrationIds.map((id) => new Types.ObjectId(id)),
+          },
+        },
+        { registration: 1, date: 1 },
+      )
+      .sort({ date: 1 })
+      .lean()
+      .exec();
+    for (const row of rows) {
+      const key = String(row.registration);
+      map.set(key, [...(map.get(key) ?? []), row.date]);
+    }
+    return map;
+  }
 
   private async verifyPayment(
     paymentRef: string,
@@ -207,6 +274,13 @@ export class RegistrationsService {
       dob?: string;
       emergencyContactName?: string;
       emergencyContactPhone?: string;
+      address?: string;
+      guardianName?: string;
+      guardianRelation?: string;
+      guardianPhone?: string;
+      acceptRules?: boolean;
+      parentalConsent?: boolean;
+      dataConsent?: boolean;
       tshirtSize?: string;
       pickupLocation?: string;
       eventId: string;
@@ -218,6 +292,14 @@ export class RegistrationsService {
     options?: { updateExistingParticipant?: boolean },
   ): Promise<PublicRegistrationResponse> {
     const event = await this.eventsService.findById(dto.eventId);
+
+    if (dto.dob && isMinorAt(dto.dob, event.startDate)) {
+      if (!dto.guardianName || !dto.guardianPhone || !dto.parentalConsent) {
+        throw new BadRequestException(
+          "Participant mineur : les coordonnées du parent ou tuteur légal et l'autorisation parentale sont obligatoires.",
+        );
+      }
+    }
 
     let participant = await this.participantsService.findByEmailOrPhone(
       dto.email,
@@ -260,6 +342,14 @@ export class RegistrationsService {
     if (dto.emergencyContactPhone) {
       patch.emergencyContactPhone = dto.emergencyContactPhone;
     }
+    if (dto.address) patch.address = dto.address;
+    if (dto.guardianName) patch.guardianName = dto.guardianName;
+    if (dto.guardianRelation) patch.guardianRelation = dto.guardianRelation;
+    if (dto.guardianPhone) patch.guardianPhone = dto.guardianPhone;
+    const now = new Date().toISOString();
+    if (dto.acceptRules) patch.rulesAcceptedAt = now;
+    if (dto.parentalConsent) patch.parentalConsentAt = now;
+    if (dto.dataConsent) patch.dataConsentAt = now;
     if (dto.tshirtSize) patch.tshirtSize = dto.tshirtSize;
     if (dto.pickupLocation) patch.pickupLocation = dto.pickupLocation;
 
@@ -277,6 +367,7 @@ export class RegistrationsService {
       await this.participantsService.update(participant.id, patch);
     }
 
+    let created = false;
     let registration = await this.registrationsRepository.findByParticipantAndEvent(
       participant.id,
       dto.eventId,
@@ -322,6 +413,7 @@ export class RegistrationsService {
         );
       }
     } else {
+      created = true;
       const year = new Date().getFullYear();
       const sequence = await this.countersRepository.getNextSequence(
         `registration:${year}`,
@@ -350,9 +442,30 @@ export class RegistrationsService {
     const token = this.qrcodeService.buildToken(
       registration.id,
       registration.code,
-      this.qrInfo(participant, event.name, registration.registrationNumber),
+      this.qrInfo(participant, event, registration.registrationNumber),
     );
     const qrCode = await this.qrcodeService.toImageDataUrl(token);
+
+    const recipient = dto.email ?? participant.email;
+    if (created && event.isFree && recipient) {
+      // Envoi en arrière-plan : l'inscription ne dépend pas de l'e-mail.
+      void this.mailService
+        .sendTicket({
+          to: recipient,
+          firstName: participant.firstName,
+          eventName: event.name,
+          registrationNumber: registration.registrationNumber,
+          qrCodeDataUrl: qrCode,
+          eventDate: event.startDate,
+          eventScheduleLabel: event.scheduleLabel,
+          eventLocation: event.location,
+        })
+        .catch((error: unknown) =>
+          this.logger.warn(
+            `E-mail du billet ${registration?.registrationNumber} non envoyé : ${String(error)}`,
+          ),
+        );
+    }
 
     return {
       id: registration.id,
@@ -373,6 +486,10 @@ export class RegistrationsService {
         company: participant.company,
         emergencyContactName: participant.emergencyContactName,
         emergencyContactPhone: participant.emergencyContactPhone,
+        address: participant.address,
+        guardianName: participant.guardianName,
+        guardianRelation: participant.guardianRelation,
+        guardianPhone: participant.guardianPhone,
         tshirtSize: participant.tshirtSize,
         pickupLocation: participant.pickupLocation,
         photo: participant.photo,
@@ -537,6 +654,10 @@ export class RegistrationsService {
         company: participant.company,
         emergencyContactName: participant.emergencyContactName,
         emergencyContactPhone: participant.emergencyContactPhone,
+        address: participant.address,
+        guardianName: participant.guardianName,
+        guardianRelation: participant.guardianRelation,
+        guardianPhone: participant.guardianPhone,
         tshirtSize: participant.tshirtSize,
         pickupLocation: participant.pickupLocation,
         photo: participant.photo,
@@ -552,7 +673,7 @@ export class RegistrationsService {
         this.qrcodeService.buildToken(
           registration.id,
           registration.code,
-          this.qrInfo(participant, event.name, registration.registrationNumber),
+          this.qrInfo(participant, event, registration.registrationNumber),
         ),
       ),
       status: registration.status,
@@ -576,6 +697,7 @@ export class RegistrationsService {
     if (query.paymentNetwork) {
       filter.paymentNetwork = query.paymentNetwork;
     }
+    await this.applySessionFilter(filter, query);
 
     const participantFilter: FilterQuery<Record<string, unknown>> = {};
     if (query.tshirtSize) {
@@ -641,11 +763,11 @@ export class RegistrationsService {
             tshirtSize?: string;
             pickupLocation?: string;
           };
-          const event = (r.eventDoc ?? {}) as { name?: string };
+          const event = (r.eventDoc ?? {}) as { name?: string; isFree?: boolean };
           const token = this.qrcodeService.buildToken(
             String(r._id),
             String(r.code),
-            this.qrInfo(participant, event.name, String(r.registrationNumber)),
+            this.qrInfo(participant, event, String(r.registrationNumber)),
           );
           const qrCode = await this.qrcodeService.toImageDataUrl(token);
           const { participantDoc: _pd, eventDoc: _ed, ...rest } = r;
@@ -667,11 +789,11 @@ export class RegistrationsService {
           tshirtSize?: string;
           pickupLocation?: string;
         };
-        const event = reg.event as unknown as { name?: string };
+        const event = reg.event as unknown as { name?: string; isFree?: boolean };
         const token = this.qrcodeService.buildToken(
           reg.id,
           reg.code,
-          this.qrInfo(participant, event.name, reg.registrationNumber),
+          this.qrInfo(participant, event, reg.registrationNumber),
         );
         const qrCode = await this.qrcodeService.toImageDataUrl(token);
         return {
@@ -681,6 +803,13 @@ export class RegistrationsService {
         };
       }),
     );
+
+    const datesByRegistration = await this.attendanceDatesByRegistration(
+      items.map((item) => String(item.id)),
+    );
+    for (const item of items as Record<string, unknown>[]) {
+      item.attendanceDates = datesByRegistration.get(String(item.id)) ?? [];
+    }
 
     return { items, meta: result.meta };
   }
@@ -697,6 +826,7 @@ export class RegistrationsService {
     byGender: { value: string; count: number }[];
     byTitle: { value: string; count: number }[];
     byProfession: { value: string; count: number }[];
+    bySession: { value: string; count: number }[];
   }> {
     const filter: FilterQuery<Registration> = {};
     if (query.event) {
@@ -705,7 +835,22 @@ export class RegistrationsService {
     if (query.paid === 'true') {
       filter.paymentRef = { $exists: true, $ne: null };
     }
-    return this.registrationsRepository.aggregateStats(filter);
+    const [stats, sessions] = await Promise.all([
+      this.registrationsRepository.aggregateStats(filter),
+      query.event
+        ? this.attendanceModel
+            .aggregate<{ _id: string; count: number }>([
+              { $match: { event: new Types.ObjectId(query.event) } },
+              { $group: { _id: '$date', count: { $sum: 1 } } },
+              { $sort: { _id: 1 } },
+            ])
+            .exec()
+        : Promise.resolve([]),
+    ]);
+    return {
+      ...stats,
+      bySession: sessions.map((s) => ({ value: s._id, count: s.count })),
+    };
   }
 
   async exportPdf(query: QueryRegistrationsDto): Promise<Buffer> {
@@ -791,11 +936,11 @@ export class RegistrationsService {
       tshirtSize?: string;
       pickupLocation?: string;
     };
-    const event = registration.event as unknown as { name?: string };
+    const event = registration.event as unknown as { name?: string; isFree?: boolean };
     const token = this.qrcodeService.buildToken(
       registration.id,
       registration.code,
-      this.qrInfo(participant, event.name, registration.registrationNumber),
+      this.qrInfo(participant, event, registration.registrationNumber),
     );
     const qrCode = await this.qrcodeService.toImageDataUrl(token);
     return { registrationNumber: registration.registrationNumber, qrCode };
@@ -816,18 +961,26 @@ export class RegistrationsService {
       tshirtSize?: string;
       pickupLocation?: string;
     },
-    eventName?: string,
+    event: { name?: string; isFree?: boolean },
     registrationNumber?: string,
   ): Record<string, unknown> {
+    const eventName = event.name;
+    const fullName =
+      [participant.firstName, participant.lastName]
+        .filter(Boolean)
+        .join(' ')
+        .trim() || undefined;
+    // Événements gratuits (camp de mineurs, séminaire...) : le QR code ne
+    // contient aucune donnée personnelle lisible, seulement le billet.
+    if (event.isFree) {
+      return { registrationNumber, eventName, fullName };
+    }
     return {
       registrationNumber,
       eventName,
       firstName: participant.firstName,
       lastName: participant.lastName,
-      fullName: [participant.firstName, participant.lastName]
-        .filter(Boolean)
-        .join(' ')
-        .trim() || undefined,
+      fullName,
       email: participant.email,
       phone: participant.phone,
       city: participant.city,

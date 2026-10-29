@@ -13,6 +13,12 @@ export const envValidationSchema = Joi.object({
   FEEXPAY_SHOP_ID: Joi.string().optional(),
   FEEXPAY_BASE_URL: Joi.string().uri().optional(),
   FEEXPAY_CALLBACK_URL: Joi.string().uri().optional(),
+  SMTP_HOST: Joi.string().optional(),
+  SMTP_PORT: Joi.number().optional(),
+  SMTP_SECURE: Joi.string().valid('true', 'false').optional(),
+  SMTP_USER: Joi.string().optional(),
+  SMTP_PASS: Joi.string().optional(),
+  MAIL_FROM: Joi.string().optional(),
   SEED_SUPER_ADMIN_EMAIL: Joi.string()
     .email({ tlds: { allow: false } })
     .optional(),

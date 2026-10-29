@@ -15,6 +15,7 @@ import { AttendanceModule } from './attendance/attendance.module';
 import { SuggestionsModule } from './suggestions/suggestions.module';
 import { RecruitmentsModule } from './recruitments/recruitments.module';
 import { PaymentsModule } from './payments/payments.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { PaymentsModule } from './payments/payments.module';
       validationSchema: envValidationSchema,
     }),
     DatabaseModule,
+    MailModule,
     AuthModule,
     UsersModule,
     RolesModule,

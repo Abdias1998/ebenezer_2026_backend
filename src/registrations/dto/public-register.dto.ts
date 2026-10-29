@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsDateString,
   IsEmail,
   IsIn,
@@ -66,6 +67,41 @@ export class PublicRegisterDto {
   @IsOptional()
   @IsString()
   company?: string;
+
+  @ApiPropertyOptional({ description: 'Adresse de résidence' })
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiPropertyOptional({ description: 'Parent / tuteur légal (mineurs)' })
+  @IsOptional()
+  @IsString()
+  guardianName?: string;
+
+  @ApiPropertyOptional({ description: 'Lien avec le participant' })
+  @IsOptional()
+  @IsString()
+  guardianRelation?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  guardianPhone?: string;
+
+  @ApiPropertyOptional({ description: 'Règlement accepté' })
+  @IsOptional()
+  @IsBoolean()
+  acceptRules?: boolean;
+
+  @ApiPropertyOptional({ description: 'Autorisation parentale (mineurs)' })
+  @IsOptional()
+  @IsBoolean()
+  parentalConsent?: boolean;
+
+  @ApiPropertyOptional({ description: 'Consentement au traitement des données' })
+  @IsOptional()
+  @IsBoolean()
+  dataConsent?: boolean;
 
   @ApiPropertyOptional({ description: 'Date de naissance (AAAA-MM-JJ)' })
   @IsOptional()

@@ -18,6 +18,14 @@ export default () => ({
     callbackUrl:
       process.env.FEEXPAY_CALLBACK_URL,
   },
+  mail: {
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT ?? '587', 10),
+    secure: (process.env.SMTP_SECURE ?? 'false') === 'true',
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+    from: process.env.MAIL_FROM,
+  },
   seed: {
     superAdminEmail: process.env.SEED_SUPER_ADMIN_EMAIL,
     superAdminPassword: process.env.SEED_SUPER_ADMIN_PASSWORD,
