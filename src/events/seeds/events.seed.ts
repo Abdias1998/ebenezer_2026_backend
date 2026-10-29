@@ -50,7 +50,7 @@ export const CONFERENCE_EVENT = {
 };
 
 export const CAMP_EVENT = {
-  name: 'Camp La Sagesse de Bâtir',
+  name: 'Camp La Sagesse pour Bâtir',
   theme: 'Chaque vendredi dans Sa présence',
   description:
     "Chaque vendredi, une nuit de prière, d'adoration et de communion pour la jeunesse.",
