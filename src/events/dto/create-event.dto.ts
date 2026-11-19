@@ -59,6 +59,12 @@ export class CreateEventDto {
   @Min(0)
   totalSlots?: number;
 
+  @ApiPropertyOptional({ description: "Frais d'inscription en FCFA" })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  price?: number;
+
   @ApiPropertyOptional({ description: 'Inscription gratuite (sans paiement)' })
   @IsOptional()
   @IsBoolean()

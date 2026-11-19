@@ -385,7 +385,9 @@ export class RegistrationsService {
         return this.buildPublicResponseForDocument(usedPayment);
       }
 
-      await this.verifyPayment(dto.paymentRef, dto.paymentAmount);
+      // Le prix de l'événement fait foi : le montant envoyé par le client
+      // ne sert que si l'événement n'a pas de prix configuré.
+      await this.verifyPayment(dto.paymentRef, event.price ?? dto.paymentAmount);
     }
 
     if (registration) {

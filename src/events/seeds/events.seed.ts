@@ -67,7 +67,30 @@ export const CAMP_EVENT = {
   singleCheckIn: false,
 };
 
-const EVENTS = [JDJ_EVENT, SEMINAIRE_EVENT, CONFERENCE_EVENT, CAMP_EVENT];
+export const WORSHIP_EVENT = {
+  name: 'Worship & Praise — Revival Night',
+  theme: 'Édition Lomé',
+  description:
+    "Une nuit d'adoration, de louange et de réveil avec Evg. Ese Beloved, Dany Kasongo, Proph. Asher Ruona, Pastor Lawrence Oyor, Pastor Godswill Oyor, les chantres John & Gifty et de nombreux chantres invités. Infos : +228 90 10 00 38 / 91 49 07 44.",
+  // Vendredi 27 nov. 20h00 → aube du 28 nov., heure de Lomé (UTC+0).
+  startDate: new Date('2026-11-27T20:00:00Z'),
+  endDate: new Date('2026-11-28T06:00:00Z'),
+  location: "Terrain du Lycée d'Agoè Centre, non loin des Deux Lions, Lomé, Togo",
+  totalSlots: 1000,
+  status: EventStatus.PUBLISHED,
+  registrationPrefix: 'WPN',
+  price: 5000,
+  // La nuit passe minuit : un seul pointage pour tout l'événement.
+  singleCheckIn: true,
+};
+
+const EVENTS = [
+  JDJ_EVENT,
+  SEMINAIRE_EVENT,
+  CONFERENCE_EVENT,
+  CAMP_EVENT,
+  WORSHIP_EVENT,
+];
 
 async function bootstrap(): Promise<void> {
   const logger = new Logger('EventsSeed');

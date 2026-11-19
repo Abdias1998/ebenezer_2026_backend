@@ -50,6 +50,14 @@ export class Event {
   @Prop({ default: 0 })
   totalSlots: number;
 
+  /**
+   * Frais d'inscription en FCFA. Quand il est renseigné, le serveur refuse
+   * un paiement d'un montant inférieur, quel que soit le montant annoncé
+   * par le client.
+   */
+  @Prop({ min: 0 })
+  price?: number;
+
   /** Inscription gratuite : le billet est confirmé sans paiement. */
   @Prop({ default: false })
   isFree: boolean;
