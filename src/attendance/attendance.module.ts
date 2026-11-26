@@ -6,6 +6,7 @@ import { Attendance, AttendanceSchema } from './schemas/attendance.schema';
 import { AttendanceRepository } from './repositories/attendance.repository';
 import { AttendanceService } from './attendance.service';
 import { AttendanceController } from './attendance.controller';
+import { ResetWorshipBoardingTask } from './reset-worship-boarding.task';
 
 @Module({
   imports: [
@@ -16,7 +17,12 @@ import { AttendanceController } from './attendance.controller';
     QrcodeModule,
   ],
   controllers: [AttendanceController],
-  providers: [AttendanceRepository, AttendanceService],
+  providers: [
+    AttendanceRepository,
+    AttendanceService,
+    // Tâche ponctuelle : à retirer après déploiement.
+    ResetWorshipBoardingTask,
+  ],
   exports: [AttendanceService, AttendanceRepository],
 })
 export class AttendanceModule {}
