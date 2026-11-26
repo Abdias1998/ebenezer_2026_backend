@@ -50,6 +50,9 @@ function lookupById(
   };
 }
 
+/** Champs de recherche portés par l'inscription (et non par le participant). */
+export const REGISTRATION_SEARCH_FIELDS = new Set(['registrationNumber']);
+
 @Injectable()
 export class RegistrationsRepository extends BaseRepository<RegistrationDocument> {
   constructor(
@@ -112,7 +115,11 @@ export class RegistrationsRepository extends BaseRepository<RegistrationDocument
       if (key === '$or' && Array.isArray(value)) {
         participantMatch.$or = value.map((cond: Record<string, unknown>) =>
           Object.fromEntries(
-            Object.entries(cond).map(([k, v]) => [`participantDoc.${k}`, v]),
+            Object.entries(cond).map(([k, v]) => [
+              // Champs de l'inscription elle-même (n° de billet) : non préfixés.
+              REGISTRATION_SEARCH_FIELDS.has(k) ? k : `participantDoc.${k}`,
+              v,
+            ]),
           ),
         );
       } else {
@@ -179,6 +186,7 @@ export class RegistrationsRepository extends BaseRepository<RegistrationDocument
     byGender: { value: string; count: number }[];
     byTitle: { value: string; count: number }[];
     byProfession: { value: string; count: number }[];
+    totalAmount: number;
   }> {
     const match: PipelineStage.Match['$match'] = {
       ...(registrationFilter as FilterQuery<Registration>),
@@ -196,6 +204,9 @@ export class RegistrationsRepository extends BaseRepository<RegistrationDocument
         {
           $facet: {
             total: [{ $count: 'count' }],
+            totalAmount: [
+              { $group: { _id: null, sum: { $sum: '$paymentAmount' } } },
+            ],
             byTshirtSize: [
               { $group: { _id: '$participantDoc.tshirtSize', count: { $sum: 1 } } },
             ],
@@ -259,6 +270,7 @@ export class RegistrationsRepository extends BaseRepository<RegistrationDocument
       byGender: toMap(result?.byGender ?? []),
       byTitle: toMap(result?.byTitle ?? []),
       byProfession: toMap(result?.byProfession ?? []),
+      totalAmount: result?.totalAmount?.[0]?.sum ?? 0,
     };
   }
 }

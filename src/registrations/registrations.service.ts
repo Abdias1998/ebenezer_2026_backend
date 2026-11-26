@@ -444,7 +444,6 @@ export class RegistrationsService {
     const token = this.qrcodeService.buildToken(
       registration.id,
       registration.code,
-      this.qrInfo(participant, event, registration.registrationNumber),
     );
     const qrCode = await this.qrcodeService.toImageDataUrl(token);
 
@@ -675,7 +674,6 @@ export class RegistrationsService {
         this.qrcodeService.buildToken(
           registration.id,
           registration.code,
-          this.qrInfo(participant, event, registration.registrationNumber),
         ),
       ),
       status: registration.status,
@@ -734,6 +732,12 @@ export class RegistrationsService {
           { lastName: { $regex: search, $options: 'i' } },
           { email: { $regex: search, $options: 'i' } },
           { phone: { $regex: search, $options: 'i' } },
+          {
+            registrationNumber: {
+              $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+              $options: 'i',
+            },
+          },
         ];
       }
     }
@@ -765,11 +769,9 @@ export class RegistrationsService {
             tshirtSize?: string;
             pickupLocation?: string;
           };
-          const event = (r.eventDoc ?? {}) as { name?: string; isFree?: boolean };
           const token = this.qrcodeService.buildToken(
             String(r._id),
             String(r.code),
-            this.qrInfo(participant, event, String(r.registrationNumber)),
           );
           const qrCode = await this.qrcodeService.toImageDataUrl(token);
           const { participantDoc: _pd, eventDoc: _ed, ...rest } = r;
@@ -780,23 +782,7 @@ export class RegistrationsService {
         const reg = registration as unknown as RegistrationDocument;
         await reg.populate('participant');
         await reg.populate('event');
-        const participant = reg.participant as unknown as {
-          firstName?: string;
-          lastName?: string;
-          email?: string;
-          phone?: string;
-          city?: string;
-          country?: string;
-          church?: string;
-          tshirtSize?: string;
-          pickupLocation?: string;
-        };
-        const event = reg.event as unknown as { name?: string; isFree?: boolean };
-        const token = this.qrcodeService.buildToken(
-          reg.id,
-          reg.code,
-          this.qrInfo(participant, event, reg.registrationNumber),
-        );
+        const token = this.qrcodeService.buildToken(reg.id, reg.code);
         const qrCode = await this.qrcodeService.toImageDataUrl(token);
         return {
           ...reg.toObject(),
@@ -829,6 +815,7 @@ export class RegistrationsService {
     byTitle: { value: string; count: number }[];
     byProfession: { value: string; count: number }[];
     bySession: { value: string; count: number }[];
+    totalAmount: number;
   }> {
     const filter: FilterQuery<Registration> = {};
     if (query.event) {
@@ -925,72 +912,12 @@ export class RegistrationsService {
     id: string,
   ): Promise<{ registrationNumber: string; qrCode: string }> {
     const registration = await this.findById(id);
-    await registration.populate('participant');
-    await registration.populate('event');
-    const participant = registration.participant as unknown as {
-      firstName?: string;
-      lastName?: string;
-      email?: string;
-      phone?: string;
-      city?: string;
-      country?: string;
-      church?: string;
-      tshirtSize?: string;
-      pickupLocation?: string;
-    };
-    const event = registration.event as unknown as { name?: string; isFree?: boolean };
     const token = this.qrcodeService.buildToken(
       registration.id,
       registration.code,
-      this.qrInfo(participant, event, registration.registrationNumber),
     );
     const qrCode = await this.qrcodeService.toImageDataUrl(token);
     return { registrationNumber: registration.registrationNumber, qrCode };
-  }
-
-  /**
-   * Extrait les informations de la personne embarquées dans le QR code.
-   */
-  private qrInfo(
-    participant: {
-      firstName?: string;
-      lastName?: string;
-      email?: string;
-      phone?: string;
-      city?: string;
-      country?: string;
-      church?: string;
-      tshirtSize?: string;
-      pickupLocation?: string;
-    },
-    event: { name?: string; isFree?: boolean },
-    registrationNumber?: string,
-  ): Record<string, unknown> {
-    const eventName = event.name;
-    const fullName =
-      [participant.firstName, participant.lastName]
-        .filter(Boolean)
-        .join(' ')
-        .trim() || undefined;
-    // Événements gratuits (camp de mineurs, séminaire...) : le QR code ne
-    // contient aucune donnée personnelle lisible, seulement le billet.
-    if (event.isFree) {
-      return { registrationNumber, eventName, fullName };
-    }
-    return {
-      registrationNumber,
-      eventName,
-      firstName: participant.firstName,
-      lastName: participant.lastName,
-      fullName,
-      email: participant.email,
-      phone: participant.phone,
-      city: participant.city,
-      country: participant.country,
-      church: participant.church,
-      tshirtSize: participant.tshirtSize,
-      pickupLocation: participant.pickupLocation,
-    };
   }
 
   async updateStatus(

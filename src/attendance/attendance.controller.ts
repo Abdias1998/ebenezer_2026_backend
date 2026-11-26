@@ -23,6 +23,13 @@ export class AttendanceController {
     return this.attendanceService.scan(dto, user.userId);
   }
 
+  /** Contrôle d'un billet sans enregistrer d'entrée. */
+  @Post('verify')
+  @Permissions(PERMISSIONS.ATTENDANCE.READ)
+  verify(@Body() dto: ScanDto) {
+    return this.attendanceService.verify(dto);
+  }
+
   @Post('registrations/:registrationId/check-in')
   @Permissions(PERMISSIONS.ATTENDANCE.CREATE)
   checkIn(

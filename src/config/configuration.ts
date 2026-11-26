@@ -10,6 +10,8 @@ export default () => ({
     expiresIn: process.env.JWT_EXPIRES_IN || '1d',
   },
   qrSecret: process.env.QR_SECRET,
+  /** URL publique du site (ex. https://ebenezer.example) : les QR codes pointent vers sa page de contrôle. */
+  frontendUrl: process.env.FRONTEND_URL,
   feexpay: {
     apiKey: process.env.FEEXPAY_API_KEY,
     shopId: process.env.FEEXPAY_SHOP_ID,
