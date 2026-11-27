@@ -936,5 +936,9 @@ export class RegistrationsService {
     if (!registration) {
       throw new NotFoundException('Registration not found');
     }
+    // Les pointages de cette inscription n'ont plus de sens sans elle.
+    await this.attendanceModel
+      .deleteMany({ registration: registration._id })
+      .exec();
   }
 }
