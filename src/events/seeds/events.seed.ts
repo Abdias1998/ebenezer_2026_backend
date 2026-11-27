@@ -84,12 +84,29 @@ export const WORSHIP_EVENT = {
   singleCheckIn: true,
 };
 
+export const LEADERS_EVENT = {
+  name: 'Conférence des Leaders',
+  theme: "L'onction pour impacter les nations",
+  description:
+    'Conférence des leaders organisée par le Centre La Grâce Parle. Orateur : Proph. Héritier Museba. Entrée libre et gratuite, inscription obligatoire. Infos : +229 01 50 50 50 11.',
+  // Samedi 5 déc. 09h00, heure du Bénin (UTC+1). Heure de fin non communiquée.
+  startDate: new Date('2026-12-05T08:00:00Z'),
+  endDate: new Date('2026-12-05T13:00:00Z'),
+  location: 'Salle Bleue du Palais des Congrès, Cotonou',
+  totalSlots: 1000,
+  status: EventStatus.PUBLISHED,
+  registrationPrefix: 'CDL',
+  isFree: true,
+  singleCheckIn: true,
+};
+
 const EVENTS = [
   JDJ_EVENT,
   SEMINAIRE_EVENT,
   CONFERENCE_EVENT,
   CAMP_EVENT,
   WORSHIP_EVENT,
+  LEADERS_EVENT,
 ];
 
 async function bootstrap(): Promise<void> {
